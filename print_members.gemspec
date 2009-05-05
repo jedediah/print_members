@@ -9,6 +9,6 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ["README"]
   s.files = ["README","print_members.gemspec","lib/print_members.rb","Rakefile"]
   s.has_rdoc = true
-  s.homepage = "http://github.com/hilarity_ensues"
+  s.homepage = "http://github.com/jedediah/print_members"
   s.require_paths = ["lib"]
 end
