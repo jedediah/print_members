@@ -1,0 +1,51 @@
+Use this in IRB to pretty print a list of live methods and constants, for example:
+
+>> PrintMethods[String]
+
+ String 
+
+ Constants:
+  BRA2KET
+
+ Class Methods:
+  try_convert/1 interpolate/0
+
+ Instance Methods:
+  <=>/1             casecmp/1         +/1               */1               %/1              
+  []/-1             []=/-1            insert/2          length/0          size/0           
+  bytesize/0        empty?/0          match/-1          succ/0            succ!/0          
+  ...
+
+>> PrintMethods[17]
+
+ Fixnum 
+
+ Instance Methods:
+  +/1    -/1    */1    //1    %/1    **/1   ~/0    &/1    |/1    ^/1    []/1   <</1   >>/1  
+  to_f/0 size/0
+
+>> PrintMethods.install
+
+>> Array.pm
+
+ Array
+
+ Class Methods:
+  []/-1         try_convert/1
+
+ Instance Methods:
+  to_ary/0            []/-1               []=/-1              at/1               
+  fetch/-1            concat/1            <</1                insert/-1          
+  each/0              each_index/0        length/0            size/0             
+  ...
+
+>> pm /abc/
+
+ Regexp 
+
+ Constants:
+  IGNORECASE EXTENDED   MULTILINE 
+
+ Class Methods:
+  compile/-1    quote/1       escape/1      union/-1      last_match/-1 try_convert/1
+  ...
