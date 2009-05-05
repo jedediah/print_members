@@ -134,4 +134,4 @@ class Array
   include PrintMembers::Ext::Array
 end
 
-PrintMembers.install
+# PrintMembers.install
