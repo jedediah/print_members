@@ -1,22 +1,93 @@
+class Object
+  # Anonymous singleton class of this object
+  def singleton_class
+    class << self; self; end
+  end
+
+  # Eval block in the context of the singleton class
+  def singleton_class_eval &block
+    self.singleton_class.class_eval &block
+  end
+end
+
 class Module
-  # instance methods from included modules
+  alias_method :instance_method_defined?, :method_defined?
+
+  # Instance methods from included modules
   def included_methods
     included_modules.map(&:instance_methods).flatten
   end
 
-  # instance methods defined in this module
+  # True if method +m+ is defined in this module,
+  # false if +m+ doesn't exist or was extended from another module or inherited from a superclass
+  def method_local? m
+    self.respond_to?(m) && self.method(m).owner == self
+  end
+
+  # True if instance method +m+ is defined in this module,
+  # false if +m+ doesn't exist or is inherited from an ancestor e.g. an included module or superclass
+  def instance_method_local? m
+    self.method_defined?(m) && self.instance_method(m).owner == self
+  end
+
+  # True only if method +m+ exists in this module and is not local
+  def method_inherited? m
+    self.respond_to?(m) && self.method(m).owner != self
+  end
+
+  # True only if instance method +m+ exists in this module and is not local
+  def instance_method_inherited? m
+    self.method_defined?(m) && self.instance_method(m).owner != self
+  end
+
+  # True only if instance method +m+ is local and also exists in an ancestor
+  def instance_method_overridden? m
+    self.method_defined?(m) && self.instance_method(m).owner == self && self.ancestors[1..-1].any?{|mod| mod.method_defined?(m)}
+  end
+
+  # Methods defined in this module (not inherited)
+  def local_methods
+    self.methods.select{|m| self.method(m).owner == self }
+  end
+
+  # Instance methods defined in this module (not inherited)
   def local_instance_methods
-    instance_methods - included_methods
+    self.instance_methods.select{|m| self.instance_method(m).owner == self }
+  end
+
+  # Methods in this module that are not local
+  def inherited_methods
+    self.methods.select{|m| self.method(m).owner != self }
+  end
+
+  # Instance methods in this module that are not local
+  def inherited_instance_methods
+    self.instance_methods.select{|m| self.instance_method(m).owner != self }
+  end
+
+  # Instance methods defined in this module (local) that are also in an ancestor module
+  def overridden_instance_methods
+    ancestors[1..-1].map(&:instance_methods).flatten.select{|m| self.instance_method_local? m }.uniq
+  end
+
+  def grouped_methods
+    { :local => self.local_methods,
+      :inherited => self.inherited_methods,
+      :local_instance => self.local_instance_methods,
+      :inherited_instance => self.inherited_instance_methods,
+      :overridden_instance => self.overridden_instance_methods }
   end
 end
 
 class Class
-  def inherited_instance_methods
-    superclass.instance_methods
+  # True only if method +m+ is defined in this class (local) and is also in the superclass
+  def method_overridden? m
+    self.method_local?(m) && superclass.respond_to?(m)
   end
 
-  def local_instance_methods
-    super - inherited_instance_methods
+  # Methods defined in this class (local) that are also in the superclass
+  def overridden_methods
+    superclass.methods.select{|m| self.method_local? m }
   end
 end
 
@@ -60,7 +131,7 @@ module PrintMembers
     def self.method_list title, meths, color, width, extract
       unless meths.empty?
         "\n#{change_color CONF[:heading_color]} #{title}:#{change_color '0'}\n" +
-        meths.map do |m|
+        meths.sort.map do |m|
           arity = extract[m].arity if extract
            [change_color(color) + m.to_s + (change_color(CONF[:slash_color]) + '/' + change_color(CONF[:arity_color]) + arity.to_s if extract).to_s,
             (m.to_s + ('/'+arity.to_s if extract).to_s).size]
@@ -76,6 +147,81 @@ module PrintMembers
       def pm x=nil
         print ::PrintMembers[x || self]
       end
+    end
+  end
+
+  DELIMS = {
+    "do"            => "end",
+    "begin"         => "end",
+    "def"           => "end",
+    "class"         => "end",
+    "module"        => "end",
+    "if"            => "end",
+    "unless"        => "end",
+    "while"         => "end",
+    "until"         => "end"
+  }
+
+  DELIM_OPEN = /\b(do|begin|def|class|module|if|unless|while|until)\b/
+  DELIM_CLOSE = /\bend\b/
+  DELIM = /\b(do|begin|def|class|module|if|unless|while|until|end)\b/
+
+  def self.src obj, mem
+    meth = (obj.method(mem) rescue obj.instance_method(mem) rescue obj.singleton_method(mem) rescue nil)
+
+    if meth.nil?
+      if obj.const_defined? mem
+        raise "const source not supported yet"
+      else
+        raise "unknown member"
+      end
+    end
+
+    pathname, lineno = meth.source_location
+    
+    if pathname && File.exist?(pathname)
+      File.open pathname, "r" do |io|
+        io.lines.take lineno-1
+        ss = StringScanner.new io.read
+
+        parse_block = lambda do
+          puts "*** parsing block"
+          ss.scan_until DELIM
+          if !ss.matched? || ss[0] == "end" || ss[0] == "}"
+            puts "!!! no open delim"
+            return nil
+          end
+
+          puts "*** found open delim #{ss.matched}"
+
+          loop do
+            ss.scan_until DELIM
+
+            unless ss.matched?
+              puts "!!! no delims left and block still open"
+              return nil
+            end
+
+            if ss[0] == "end" || ss[0] == "}"
+              puts "*** found close delim #{ss.matched}"
+              return true
+            end
+
+            ss.pos -= ss.matched_size
+            return nil unless parse_block[]
+          end
+        end
+
+        parse_block[]
+        
+        if ss.matched?
+          return ss.pre_match + ss.matched + "\n"
+        else
+          return ss.string
+        end
+      end
+    else
+      return "can't locate source for #{obj}.#{mem}\n"
     end
   end
 
