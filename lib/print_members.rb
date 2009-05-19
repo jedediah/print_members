@@ -1,3 +1,45 @@
+module Enumerable
+  def mash
+    reduce({}) {|h,x| kv = yield x
+                      h[kv[0]] = kv[1] if kv.respond_to? :[]
+                      h }
+  end
+end
+
+module MethodTools
+  # Return the gem that defines this method in the form [name,version]
+  # where name is the name of the gem as a string
+  # and version is an array of the version number components.
+  # For example: ["rails",[2,3,2]]
+  # Returns +nil+ if this method is not part of a gem or if the source is unknown.
+  def source_gem
+    return nil unless source_location && defined? Gem
+    src = source_location[0]
+    rsep = Regexp.escape(File::SEPARATOR)
+
+    if path = Gem.path.find {|p| src.start_with? p }
+      rpath = Regexp.escape(path)
+      src =~ /^#{rpath}#{rsep}gems#{rsep}([^#{rsep}]+)-([0-9\.]+)/
+      return [$1,$2.split(/\./).map(&:to_i)]
+    end
+
+# TODO: try to give some useful info for standard libraries
+#     elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
+#       rpath = Regexp.escape(path.max(&:size))
+#       src =~ /^#{rpath}#{rsep}([^#{rsep}]+)/
+#       [$1,nil]
+#     end
+  end
+end
+
+class Method
+  include MethodTools
+end
+
+class UnboundMethod
+  include MethodTools
+end
+
 class Object
   # Anonymous singleton class of this object
   def singleton_class
@@ -102,29 +144,79 @@ class Module
   # Methods become unboring if they are overridden in an unboring class/module.
   # This method returns all of the unboring singleton methods.
   def unboring_methods
-    if self.is_a?(self)
-      self.local_methods - self.local_instance_methods
+    if [Class,Module].include? self
+      # Only those instance methods that we have not by virtue of being an instance of ourself
+      self.methods - (self.instance_methods - self.singleton_methods)
+    elsif self.is_a? Class
+      # Only those instance methods that we have not by virtue of being a Class, unless we have overridden them
+      self.methods - (Class.instance_methods - self.singleton_methods)
     else
-      self.local_methods
+      # Only those instance methods that we have not by virtue of being a Module, unless we have overridden them
+      self.methods - (Module.instance_methods - self.singleton_methods)
     end
-
-#     (if self.is_a?(self)
-#       self.local_methods - self.local_instance_methods
-#     else
-#       self.local_methods
-#     end + (self.ancestors.uniq -
-#            BORING_CLASSES.map{|c| [c,*c.included_modules] } -
-#           [self, *self.included_modules]).map{|c| c.local_methods }.flatten).uniq
   end
 
   # "Unboring" methods are simply those not inherited from any of the boring classes.
   # Methods become unboring if they are overridden in an unboring class/module.
   # This method returns all of the unboring instance methods.
   def unboring_instance_methods
-    self.local_instance_methods
+    if [BasicObject,Object,Kernel].include? self
+      self.instance_methods
+    # elsif [Class,Module].include? self
+    #  self.instance_methods - Object.instance_methods
+    else
+      self.instance_methods - (Object.instance_methods - self.local_instance_methods)
+    end
+  end
 
-#     bc ||= boring_classes
-#     instance_methods.select{|m| not bc.include? instance_method(m).owner }
+  def method_owner m
+    method(m).owner
+  end
+
+  def method_gem m
+    method(m).source_gem
+  end
+
+  def method_location m
+    mm = method(m)
+    [mm.owner,mm.source_gem]
+  end
+
+  def method_owners
+    methods.mash {|m| [m, method(m).owner] }
+  end
+
+  def method_gems
+    methods.mash {|m| [m, method(m).source_gem] }
+  end
+
+  def method_locations
+    methods.mash {|m| mm = method(m); [m, [mm.owner, mm.source_gem]] }
+  end
+
+  def instance_method_owner m
+    instance_method(m).owner
+  end
+
+  def instance_method_gem m
+    instance_method(m).source_gem
+  end
+
+  def instance_method_location m
+    mm = instance_method(m)
+    [mm.owner,mm.source_gem]
+  end
+
+  def instance_method_owners
+    instance_methods.mash {|m| [m, instance_method(m).owner] }
+  end
+
+  def instance_method_gems
+    instance_methods.mash {|m| [m, instance_method(m).source_gem] }
+  end
+
+  def instance_method_locations
+    instance_methods.mash {|m| mm = instance_method(m); [m, [mm.owner, mm.source_gem]] }
   end
 end
 
