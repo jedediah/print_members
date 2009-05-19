@@ -77,6 +77,74 @@ class Module
       :inherited_instance => self.inherited_instance_methods,
       :overridden_instance => self.overridden_instance_methods }
   end
+
+  # Class and its ancestors (BasicObject, Object, Kernel, Module) are considered
+  # "boring" for documentation purposes, because they appear in nearly all other classes/objects.
+  # Note that +self+ and its includes are never boring, even if +self+ is in the boring list.
+  def boring_classes
+    return [Class, *Class.included_modules,
+            Module, *Module.included_modules,
+            Kernel, *Kernel.included_modules,
+            Object, *Object.included_modules,
+            BasicObject, *BasicObject.included_modules].uniq
+  end
+
+  # Module (and Class) don't consider themselves to be boring.
+  def self.boring_classes
+    return [Kernel, *Kernel.included_modules,
+            Object, *Object.included_modules,
+            BasicObject, *BasicObject.included_modules].uniq
+  end
+
+  BORING_CLASSES = [BasicObject,Object,Kernel,Module,Class]
+
+  # "Unboring" methods are simply those not inherited from any of the boring classes.
+  # Methods become unboring if they are overridden in an unboring class/module.
+  # This method returns all of the unboring singleton methods.
+  def unboring_methods
+    if self.is_a?(self)
+      self.local_methods - self.local_instance_methods
+    else
+      self.local_methods
+    end
+
+#     (if self.is_a?(self)
+#       self.local_methods - self.local_instance_methods
+#     else
+#       self.local_methods
+#     end + (self.ancestors.uniq -
+#            BORING_CLASSES.map{|c| [c,*c.included_modules] } -
+#           [self, *self.included_modules]).map{|c| c.local_methods }.flatten).uniq
+  end
+
+  # "Unboring" methods are simply those not inherited from any of the boring classes.
+  # Methods become unboring if they are overridden in an unboring class/module.
+  # This method returns all of the unboring instance methods.
+  def unboring_instance_methods
+    self.local_instance_methods
+
+#     bc ||= boring_classes
+#     instance_methods.select{|m| not bc.include? instance_method(m).owner }
+  end
+end
+
+module Kernel
+  # Kernel finds all the same classes boring as other modules do, except for itself.
+  def self.boring_classes
+    super - [Kernel, *Kernel.included_modules]
+  end
+end
+
+class BasicObject
+  # BasicObject and Object are very boring classes and thus do not consider any other classes to be boring.
+  # No, this does not pollute BasicObject. It already inherits the full suite of class methods from Class.
+  def self.boring_classes
+    if self == ::BasicObject || self == ::Object
+      super - [self, self.included_modules]
+    else
+      super   # this will resolve to Module#boring_classes
+    end
+  end
 end
 
 class Class
@@ -244,8 +312,8 @@ module PrintMembers
 
     "#{change_color CONF[:title_color]} #{klass} #{change_color '0'}\n" +
       method_list("Constants", klass.constants, CONF[:constant_color], width, nil) +
-      method_list("Class Methods", klass.singleton_methods, CONF[:class_method_color], width, klass.method(:method)) +
-      method_list("Instance Methods", klass.local_instance_methods, CONF[:instance_method_color], width, klass.method(:instance_method)) +
+      method_list("Class Methods", klass.unboring_methods, CONF[:class_method_color], width, klass.method(:method)) +
+      method_list("Instance Methods", klass.unboring_instance_methods, CONF[:instance_method_color], width, klass.method(:instance_method)) +
       (inst and method_list("Singleton Methods", inst.singleton_methods, CONF[:singleton_method_color], width, inst.method(:method))).to_s
   end
 
