@@ -1,4 +1,6 @@
-Use this in IRB to pretty print a list of live methods and constants, for example:
+Use this in IRB to pretty print a list of live methods and constants. Only works in Ruby 1.9 for now.
+
+Examples:
 
 >> PrintMethods[String]
 
