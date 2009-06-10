@@ -1,23 +1,132 @@
+
+module Enumerable
+  class << self
+    def mash
+      reduce({}) {|h,x| kv = yield x
+                        h[kv[0]] = kv[1] if kv.respond_to? :[]
+                        h }
+    end
+  end
+
+  # Generate a run-length encoded representation of +self+.
+  # Returns an enumeration of the form [ [elem,length], [elem,length], ... ]
+  # where each [elem,length] pair represents a run of +elem+ repeated +length+ times.
+  # If the returned sequence is expanded according to this scheme, it will be identical to +self+.
+  def run_length_encode
+    elem = nil
+    len = 0
+
+    if block_given?
+      each do |x|
+        if elem == x
+          len += 1
+        else
+          yield elem, len if len != 0
+          elem = x
+          len = 1
+        end
+      end
+      yield elem, len if len != 0
+    else
+      enum_for :run_length_encode
+    end
+  end # def run_length_encode
+end # module Enumerable
+
 module PrintMembers
+
+  def self.tester leading1, leading2, optional3='abc', optional4=:default4, *splat5, trailing6, trailing7, &block8
+  end
+
   module Ext
 
-    module Enumerable
-      module ClassMethods
-        def mash
-          reduce({}) {|h,x| kv = yield x
-                            h[kv[0]] = kv[1] if kv.respond_to? :[]
-                            h }
+    module String
+      # Return a string of length +n+, containing +self+ left-justified
+      # and either padded with +pad+ or truncated, depending on its size relative to +n+.
+      def left_fixed n, pad=' '
+        if n > size
+          ljust n, pad
+        else
+          slice 0...n
         end
+      end
+
+      # Create a ColorString from this String
+      def to_color_string
+        ::PrintMembers::ColorString.new self
       end
     end
 
+
     module MethodTools
-      # Return the gem that defines this method in the form [name,version]
-      # where name is the name of the gem as a string
-      # and version is an array of the version number components.
-      # For example: ["rails",[2,3,2]]
-      # Returns +nil+ if this method is not part of a gem or if the source is unknown.
-      def source_gem
+=begin
+      class MethodRipper < Ripper
+        def self.parse io, line, meth
+          rip = new io, meth
+          if line == 1
+            catch(:ok) { rip.parse; nil }
+          else
+            io.lines.take line-2
+            prev = io.pos
+            io.gets
+            catch(:ok) { rip.parse; nil } or catch(:ok) { io.pos = prev; rip.parse; nil }
+          end and rip or nil
+        end
+
+        def initialize io, meth
+          super io
+          @name = meth.intern
+          @params = {}
+        end
+
+        PARSER_EVENTS.each {|meth| define_method("on_#{meth}") {|*a| puts "#{meth} #{a.inspect}"; return [meth,*a] } }
+        SCANNER_EVENTS.each {|meth| define_method("on_#{meth}") {|t| puts "@#{meth} #{t.inspect}"; return ["@#{meth}".intern, t] } }
+
+        def on_ident s
+          s.intern
+        end
+
+        def on_defs base, delim, meth, dunno1, dunno2
+          puts "on_defs #{base.inspect} #{delim.inspect} #{meth.inspect} #{dunno1.inspect} #{dunno2.inspect}"
+          throw :ok, @name == meth.intern
+        end
+
+        def on_def meth, dunno1, dunno2
+          puts "on_def #{meth.inspect} #{dunno1.inspect} #{dunno2.inspect}"
+          throw :ok, @name == meth.intern
+        end
+
+        def on_params leading, optional, splat, trailing, block
+          puts "on_params #{leading.inspect}, #{optional.inspect}, #{splat.inspect}, #{trailing.inspect}, #{block.inspect}"
+          @params = { :leading => leading,
+                      :optional => optional.reduce({}) {|h,(k,v)| h[k] = v; h },
+                      :splat => splat,
+                      :trailing => trailing,
+                      :block => block,
+                      :all => leading + optional.map(&:first) + splat + trailing + block }
+        end
+
+        attr_reader :name, :leading, :optional, :splat, :trailing, :block
+
+      end # class MethodRipper
+=end
+
+
+      # If this method was defined in a gem, a 3-tuple of this form is returned:
+      #   [:gem,+gem_name+,[+gem_version+]]
+      # where
+      #  +gem_name+ is the name of the gem as a string e.g. "rake"
+      #  +gem_version+ is an integer array of the version components e.g. [2,1,0]
+      #
+      # If this method was defined in a non-gem library, the following 3-tuple is returned:
+      #   [:lib,+lib_name+,nil]
+      # where lib_name is the first component of the source file path that is not part of
+      # any entry in $LOAD_PATH, stripped of the .rb extension, if it has one.
+      #
+      # If the source of the method is unknown, +nil+ is returned.
+      # This could mean, for example, that the method is built-in, part of a C extension
+      # or was defined in an eval call.
+      def source_lib
         return nil unless source_location && defined? Gem
         src = source_location[0]
         rsep = Regexp.escape(File::SEPARATOR)
@@ -25,17 +134,43 @@ module PrintMembers
         if path = Gem.path.find {|p| src.start_with? p }
           rpath = Regexp.escape(path)
           src =~ /^#{rpath}#{rsep}gems#{rsep}([^#{rsep}]+)-([0-9\.]+)/
-          return [$1,$2.split(/\./).map(&:to_i)]
+          [:gem,$1,$2.split(/\./).map(&:to_i)]
+        elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
+          rpath = Regexp.escape(path.max(&:size))
+          src =~ /^#{rpath}#{rsep}([^#{rsep}]+)/
+          [:lib,$1,nil]
         end
-
-    # TODO: try to give some useful info for standard libraries
-    #     elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
-    #       rpath = Regexp.escape(path.max(&:size))
-    #       src =~ /^#{rpath}#{rsep}([^#{rsep}]+)/
-    #       [$1,nil]
-    #     end
       end
-    end
+
+      # Returns a Hash mapping the names of the parameters of this method
+      # to the string source of their default values. The order of the
+      # paramaters in the Hash matches their order in the method.
+      # Parameters with no default are mapped to +nil+.
+      def parameters
+        file,line = source_location
+        if file
+          File.open file, "r" do |io|
+            MethodRipper.parse io, line, self.name
+          end
+        end
+      end
+
+      # Returns one of :public, :private or :protected according to the
+      # visibility of this method within its owner, or +nil+ if that
+      # is unknown.
+      def visibility
+        if owner.public_instance_methods.include? name
+          :public
+        elsif owner.private_instance_methods.include? name
+          :private
+        elsif owner.protected_instance_methods.include? name
+          :protected
+        else
+          nil
+        end
+      end
+
+    end # module MethodTools
 
     module Method
       include MethodTools
@@ -225,6 +360,27 @@ module PrintMembers
       def instance_method_locations
         instance_methods.mash {|m| mm = instance_method(m); [m, [mm.owner, mm.source_gem]] }
       end
+
+      def indirect_ancestors
+        ancestors[1..-1].to_a.map{|x| x.ancestors[1..-1].to_a }.flatten
+      end
+
+      def direct_ancestors
+        ancestors[1..-1] - indirect_ancestors
+      end
+
+      def direct_includes
+        direct_ancestors.reject {|x| x.is_a? Class }
+      end
+
+
+      def family_tree
+        [self,direct_ancestors.map(&:family_tree)]
+      end
+
+      def family_tree_hash
+        direct_ancestors.reduce({}) {|h,mod| h[mod] = mod.family_tree_hash; h }
+      end
     end
 
     module Kernel
@@ -260,36 +416,36 @@ module PrintMembers
       def overridden_methods
         superclass.methods.select{|m| self.method_local? m }
       end
+
+      def direct_lineage
+        if superclass
+          [self,*superclass.direct_lineage]
+        else
+          [self]
+        end
+      end
     end
 
 
     module Array
-      # Arrange strings into equal width columns.
-      # Each item can either be a string or an array of the form [string,length] to override the length of the item.
-      # Overriding the length is useful if the string contains non-printing characters.
-      # The column width will be the length of the longest item or +width+, whichever is less.
-      # Columns will be +spacing+ characters apart.
-      # An array of rows is returned.
-      def columnize width, spacing=1
-        return [] if empty?
-        column_width = 0
-        items_sizes = map{|x| if x.is_a? Array
-                              column_width = x[1] if x[1] > column_width
-                              x
-                            else
-                              column_width = x.size if x.size > column_width
-                              [x,x.size]
-                            end }
-        column_width = width if column_width > width
-        ncolumns = (width+spacing) / (column_width+spacing)
-        items_sizes.map{|x| x[0] + " "*(column_width-x[1]) }.each_slice(ncolumns).map{|row| row.join(' '*spacing)}
+      # Join elements of the array into a string using the << method.
+      # The separator can be specified as with +join+.
+      # The value to return for an empty list can also be provided, defaulting to "".
+      def joincat sep=nil, empty=''
+        return empty if empty?
+        sep ||= $,
+        if sep.nil?
+          reduce {|acc, x| acc << x }
+        else
+          reduce {|acc, x| acc << sep << x }
+        end
       end
     end # module Array
 
   end # module Ext
 end # module PrintMembers
 
-[Enumerable,Method,Module,Class,Object,Kernel,BasicObject,Array].each do |mod|
+[String,Method,Module,Class,Object,Kernel,BasicObject,Array].each do |mod|
   ext = PrintMembers::Ext.const_get(mod.name)
   mod.instance_exec(ext) {|ext| include ext }
   mod.extend ext::ClassMethods if defined? ext::ClassMethods
