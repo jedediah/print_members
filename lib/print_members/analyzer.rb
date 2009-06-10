@@ -126,7 +126,7 @@ module PrintMembers
 
     def definition
       file,line = source_location
-      Analyzer.lookup_method :filename => file, :ident => self.name, :line => line if file
+      Analyzer.lookup_method :filename => file, :ident => self.name, :line => line if file && File.exist?(file)
     end
 
     def refresh

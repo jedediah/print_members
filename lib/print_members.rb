@@ -501,14 +501,12 @@ module PrintMembers
 
     def ancestors_of klass
       format {
-        indent {
-          table {
-            if klass.is_a? Class
+        if klass.is_a? Class
+          "\n" + indent {
+            table {
               row heading_color("Superclasses    "), heading_color("Included Modules")
 
-              klass.direct_includes.to_a.map {|mod|
-                row '',module_color(mod.to_s)
-              }
+              klass.direct_includes.to_a.map {|mod| row '',module_color(mod.to_s) }
 
               klass.direct_lineage[1..-1].to_a.each {|supa|
                 row class_color(supa), module_color(supa.direct_includes[0].to_s)
@@ -516,14 +514,13 @@ module PrintMembers
                   row '',module_color(mod.to_s)
                 }
               }
-            else
-              row module_title_color(" #{klass} "), module_color(klass.direct_includes[0].to_s)
-              klass.direct_includes[1..-1].to_a.map {|mod|
-                row '',module_color(mod.to_s)
-              }
-            end
+            }
           }
-        }
+        else
+          heading("Included Modules") {
+            klass.direct_includes.to_a.map {|mod| module_color(mod.to_s) + "\n" }.join
+          }
+        end
       }
     end
 
@@ -534,7 +531,13 @@ module PrintMembers
                      [obj.class, obj]
                    end
 
-      format { class_title_color(" #{klass} ") + "\n\n" } +
+      format {
+        if klass.is_a? Class
+          class_title_color(" #{klass} ")
+        else
+          module_title_color(" #{klass} ")
+        end + "\n"
+      } +
       ancestors_of(klass) +
       constants_of(klass, pat) +
       class_methods_of(klass, pat) +
@@ -550,6 +553,10 @@ module PrintMembers
       mo = (obj.respond_to? meth and obj.method meth) or
            (obj.is_a? Module and obj.instance_method_defined? meth and obj.instance_method meth) or
            raise 
+    end
+
+    def install
+      Object.class_eval { def pm pat=//; ::PrintMembers.pm self, pat; end }
     end
   end
 end
