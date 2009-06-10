@@ -448,15 +448,6 @@ module PrintMembers
 
   class << self
 
-    # Extend Object with convenience method +pm+
-    def self.install
-      Object.class_eval do
-        def pm x=nil
-          print ::PrintMembers.pm(x || self)
-        end
-      end
-    end
-
     def format &block
       Formatter.format &block
     end

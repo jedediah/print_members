@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.description = "Pretty print a list of live methods and constants"
   s.summary = s.description
   s.email = "jedediah@silencegreys.com"
-  s.extra_rdoc_files = ["README"]
-  s.files = ["README",
+  s.extra_rdoc_files = ["README.rdoc"]
+  s.files = ["README.rdoc",
              "print_members.gemspec",
              "lib/print_members.rb",
              "lib/print_members/extensions.rb",

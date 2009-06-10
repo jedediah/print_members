@@ -35,9 +35,6 @@ end # module Enumerable
 
 module PrintMembers
 
-  def self.tester leading1, leading2, optional3='abc', optional4=:default4, *splat5, trailing6, trailing7, &block8
-  end
-
   module Ext
 
     module String
@@ -58,127 +55,6 @@ module PrintMembers
     end
 
 
-    module MethodTools
-=begin
-      class MethodRipper < Ripper
-        def self.parse io, line, meth
-          rip = new io, meth
-          if line == 1
-            catch(:ok) { rip.parse; nil }
-          else
-            io.lines.take line-2
-            prev = io.pos
-            io.gets
-            catch(:ok) { rip.parse; nil } or catch(:ok) { io.pos = prev; rip.parse; nil }
-          end and rip or nil
-        end
-
-        def initialize io, meth
-          super io
-          @name = meth.intern
-          @params = {}
-        end
-
-        PARSER_EVENTS.each {|meth| define_method("on_#{meth}") {|*a| puts "#{meth} #{a.inspect}"; return [meth,*a] } }
-        SCANNER_EVENTS.each {|meth| define_method("on_#{meth}") {|t| puts "@#{meth} #{t.inspect}"; return ["@#{meth}".intern, t] } }
-
-        def on_ident s
-          s.intern
-        end
-
-        def on_defs base, delim, meth, dunno1, dunno2
-          puts "on_defs #{base.inspect} #{delim.inspect} #{meth.inspect} #{dunno1.inspect} #{dunno2.inspect}"
-          throw :ok, @name == meth.intern
-        end
-
-        def on_def meth, dunno1, dunno2
-          puts "on_def #{meth.inspect} #{dunno1.inspect} #{dunno2.inspect}"
-          throw :ok, @name == meth.intern
-        end
-
-        def on_params leading, optional, splat, trailing, block
-          puts "on_params #{leading.inspect}, #{optional.inspect}, #{splat.inspect}, #{trailing.inspect}, #{block.inspect}"
-          @params = { :leading => leading,
-                      :optional => optional.reduce({}) {|h,(k,v)| h[k] = v; h },
-                      :splat => splat,
-                      :trailing => trailing,
-                      :block => block,
-                      :all => leading + optional.map(&:first) + splat + trailing + block }
-        end
-
-        attr_reader :name, :leading, :optional, :splat, :trailing, :block
-
-      end # class MethodRipper
-=end
-
-
-      # If this method was defined in a gem, a 3-tuple of this form is returned:
-      #   [:gem,+gem_name+,[+gem_version+]]
-      # where
-      #  +gem_name+ is the name of the gem as a string e.g. "rake"
-      #  +gem_version+ is an integer array of the version components e.g. [2,1,0]
-      #
-      # If this method was defined in a non-gem library, the following 3-tuple is returned:
-      #   [:lib,+lib_name+,nil]
-      # where lib_name is the first component of the source file path that is not part of
-      # any entry in $LOAD_PATH, stripped of the .rb extension, if it has one.
-      #
-      # If the source of the method is unknown, +nil+ is returned.
-      # This could mean, for example, that the method is built-in, part of a C extension
-      # or was defined in an eval call.
-      def source_lib
-        return nil unless source_location && defined? Gem
-        src = source_location[0]
-        rsep = Regexp.escape(File::SEPARATOR)
-
-        if path = Gem.path.find {|p| src.start_with? p }
-          rpath = Regexp.escape(path)
-          src =~ /^#{rpath}#{rsep}gems#{rsep}([^#{rsep}]+)-([0-9\.]+)/
-          [:gem,$1,$2.split(/\./).map(&:to_i)]
-        elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
-          rpath = Regexp.escape(path.max(&:size))
-          src =~ /^#{rpath}#{rsep}([^#{rsep}]+)/
-          [:lib,$1,nil]
-        end
-      end
-
-      # Returns a Hash mapping the names of the parameters of this method
-      # to the string source of their default values. The order of the
-      # paramaters in the Hash matches their order in the method.
-      # Parameters with no default are mapped to +nil+.
-      def parameters
-        file,line = source_location
-        if file
-          File.open file, "r" do |io|
-            MethodRipper.parse io, line, self.name
-          end
-        end
-      end
-
-      # Returns one of :public, :private or :protected according to the
-      # visibility of this method within its owner, or +nil+ if that
-      # is unknown.
-      def visibility
-        if owner.public_instance_methods.include? name
-          :public
-        elsif owner.private_instance_methods.include? name
-          :private
-        elsif owner.protected_instance_methods.include? name
-          :protected
-        else
-          nil
-        end
-      end
-
-    end # module MethodTools
-
-    module Method
-      include MethodTools
-    end
-
-    module UnboundMethod
-      include MethodTools
-    end
 
     module Object
       # Anonymous singleton class of this object

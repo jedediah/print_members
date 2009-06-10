@@ -1,0 +1,99 @@
+Use reflection and source parsing to pretty print all kinds of info about a class or module.
+Only works in Ruby 1.9 for now.
+
+= Examples (that look better in color)
+
+ >> PrintMembers.pm String
+  String
+
+   Superclasses     Included Modules
+                    PrintMembers::Ext::String
+                    Comparable
+   Object           PrintMembers::Ext::Object
+                    Kernel
+   BasicObject      PrintMembers::Ext::BasicObject
+
+  Class Methods:
+   try_convert/1     
+
+  Instance Methods:
+   %/1                 concat/1            left_fixed(n,pad=?) squeeze!/-1        
+   */1                 count/-1            length/0            start_with?/-1     
+   +/1                 crypt/1             lines/-1            strip/0            
+   ...
+
+* Classes are listed in order from most to least derived.
+* Modules appear next to the classes through which they are included.
+* If the source file for a method can be found, it is parsed to find the
+  parameters for the method, otherwise the arity of the method is shown.
+  Showing default arguments is not implemented yet and they currently appear as '?'.
+
+If you pass an object to +pm+ that is not a class or module, the class of that
+object will be used:
+
+ >> PrintMembers.pm 17
+  Fixnum 
+
+   Superclasses     Included Modules              
+   Integer                                        
+   Numeric          Comparable                    
+   Object           PrintMembers::Ext::Object     
+                    Kernel                        
+   BasicObject      PrintMembers::Ext::BasicObject
+
+  Instance Methods:
+   %/1                      chr/-1                   polar/0                 
+   &/1                      coerce/1                 pred/0                  
+   */1                      conj/0                   quo/1                   
+   ...
+
+Passing a Regexp as the second argument will filter the methods shown:
+
+ >> PrintMembers.pm String, /to/
+
+  String 
+
+   Superclasses     Included Modules              
+                    PrintMembers::Ext::String     
+                    Comparable                    
+   Object           PrintMembers::Ext::Object     
+                    Kernel                        
+   BasicObject      PrintMembers::Ext::BasicObject
+
+  Instance Methods:
+   to_c/0            to_f/0            to_r/0            to_str/0          upto/-1          
+   to_color_string() to_i/-1           to_s/0            to_sym/0          
+
+The +install+ method monkey patches +Object+ with a +pm+ method. Call it from
+your .irbrc file:
+
+ >> PrintMethods.install
+
+ >> Array.pm /^re/
+ Array 
+
+  Superclasses     Included Modules              
+                   PrintMembers::Ext::Array      
+                   Stackable                     
+                   Indexable                     
+                   Enumerable                    
+  Object           PrintMembers::Ext::Object     
+                   Kernel                        
+  BasicObject      PrintMembers::Ext::BasicObject
+
+ Instance Methods:
+  recursively(&block)  reject/0             reverse/0            
+  recursively!(&block) reject!/0            reverse!/0           
+  reduce/-1            replace/1            reverse_each/0       
+
+
+= Planned Features
+
+* Group items by gem
+* ActiveRecord integration
+* Instance variables
+* Extract RDoc markup
+* Use RI database
+* View method source
+* ObjectSpace browse/search
+* Gem browse/search
