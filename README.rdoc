@@ -26,7 +26,7 @@ Only works in Ruby 1.9 for now.
 * Modules appear next to the classes through which they are included.
 * If the source file for a method can be found, it is parsed to find the
   parameters for the method, otherwise the arity of the method is shown.
-  Showing default arguments is not implemented yet and they currently appear as '?'.
+  Default arguments are not implemented yet and they currently appear as '?'.
 
 If you pass an object to +pm+ that is not a class or module, the class of that
 object will be used:
@@ -47,10 +47,9 @@ object will be used:
    */1                      conj/0                   quo/1                   
    ...
 
-Passing a Regexp as the second argument will filter the methods shown:
+Passing a Regexp as the second argument will filter the methods:
 
  >> PrintMembers.pm String, /to/
-
   String 
 
    Superclasses     Included Modules              
