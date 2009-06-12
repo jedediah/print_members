@@ -606,14 +606,21 @@ module PrintMembers
 
     def lslib obj=nil, pat=//
       print format {
-        columns( if obj.nil?
-                   Librarian.libraries(:depth=>1).keys
-                 elsif obj.is_a? Module
-                   obj.source_libs
-                 else
-                   obj.class.source_libs
-                 end.select {|l| l =~ pat }.sort
-        )
+        if obj.nil?
+          columns Librarian.libraries(:depth=>1).keys.select{|l| l =~ pat }.sort
+        else
+          if obj.is_a? Module
+            obj.source_libs
+          else
+            obj.class.source_libs
+          end.select{|l| l[1] =~ pat }.sort.map {|lib|
+            if lib[0] == :gem
+              lib[1] + '-' + lib[2].join('.')
+            else
+              lib[1]
+            end + "\n"
+          }.join
+        end
       }
     end
 
