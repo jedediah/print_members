@@ -1,4 +1,5 @@
 require 'ripper'
+require File.join(File.dirname(__FILE__), 'librarian.rb')
 
 module PrintMembers
   module Analyzer
@@ -89,19 +90,7 @@ module PrintMembers
     # This could mean, for example, that the method is built-in, part of a C extension
     # or was defined in an eval call.
     def source_lib
-      return nil unless source_location && defined? Gem
-      src = source_location[0]
-      rsep = Regexp.escape(File::SEPARATOR)
-
-      if path = Gem.path.find {|p| src.start_with? p }
-        rpath = Regexp.escape(path)
-        src =~ /^#{rpath}#{rsep}gems#{rsep}([^#{rsep}]+)-([0-9\.]+)/
-        [:gem,$1,$2.split(/\./).map(&:to_i)]
-      elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
-        rpath = Regexp.escape(path.max(&:size))
-        src =~ /^#{rpath}#{rsep}([^#{rsep}]+)/
-        [:lib,$1,nil]
-      end
+      source_location && Librarian.library_for_path(source_location[0])
     end
 
     # Returns a Hash mapping the names of the parameters of this method
@@ -152,10 +141,24 @@ module PrintMembers
   end # module MethodTools
 end # module PrintMembers
 
-class Method
+class ::Module
+  def source_libs
+    (local_methods.map{|m| method(m).source_lib } +
+     local_instance_methods.map{|m| instance_method(m).source_lib }
+    ).compact.uniq
+  end
+
+  def source_files
+    (local_methods.map {|m| method(m).source_location.to_a[0] } +
+     local_instance_methods.map {|m| instance_method(m).source_location.to_a[0] }
+    ).compact.uniq
+  end
+end
+
+class ::Method
   include PrintMembers::MethodTools
 end
 
-class UnboundMethod
+class ::UnboundMethod
   include PrintMembers::MethodTools
 end

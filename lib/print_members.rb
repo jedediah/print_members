@@ -13,23 +13,25 @@ module PrintMembers
   # This hash contains configuration stuff that you can change.
   # Below are the default values.
   
-  CONF = {
-    :terminal_width            => "COLUMNS",   # determine terminal width from environment (can also be a number or nil)
-    :indent_size               => 2,
-    :color                     => true,        # enable colors
-    :class_title_color         => "41;37;1",   # title of a class page
-    :module_title_color        => "44;37;1",   # title of a module page
-    :heading_color             => "37;1",      # section names
-    :class_color               => "31;1",      # classes in ancestry
-    :module_color              => "34;1",      # modules in ancestry
-    :constant_color            => "31;1",      # member constants
-    :class_method_color        => "36;1",      # class methods
-    :instance_method_color     => "32;1",      # instance methods
-    :singleton_method_color    => "33;1",      # methods of defined only on the singleton class
-    :method_param_color        => "37",
-    :slash_color               => "34;1",      # misc punctuation
-    :arity_color               => "37"         # method arity (number of arguments)
-  }
+  unless defined? CONF
+    CONF = {
+      :terminal_width            => "COLUMNS",   # determine terminal width from environment (can also be a number or nil)
+      :indent_size               => 2,
+      :color                     => true,        # enable colors
+      :class_title_color         => "41;37;1",   # title of a class page
+      :module_title_color        => "44;37;1",   # title of a module page
+      :heading_color             => "37;1",      # section names
+      :class_color               => "31;1",      # classes in ancestry
+      :module_color              => "34;1",      # modules in ancestry
+      :constant_color            => "31;1",      # member constants
+      :class_method_color        => "36;1",      # class methods
+      :instance_method_color     => "32;1",      # instance methods
+      :singleton_method_color    => "33;1",      # methods of defined only on the singleton class
+      :method_param_color        => "37",
+      :slash_color               => "34;1",      # misc punctuation
+      :arity_color               => "37"         # method arity (number of arguments)
+    }
+  end
 
   # Objects of this class are essentially strings that contain color information for each character.
   # When the object is converted to a string with +to_str+ or +to_s+,
@@ -306,6 +308,8 @@ module PrintMembers
               str
             end
 
+      code = @conf[code] if code.is_a? Symbol
+
       if @conf[:color]
         ColorString.new str, code
       else
@@ -350,10 +354,13 @@ module PrintMembers
 
     def heading str, &block
       res = ColorString.new
-      res << "\n"
       res << " " << heading_color(str) << "\n" if str
       res << indent(&block) if block
       res
+    end
+
+    def br
+      ColorString.new "\n"
     end
 
     def columns list
@@ -464,30 +471,60 @@ module PrintMembers
       }
     end
 
+    def format_method_list label, clr, meths
+      this = self
+      format {
+        groups = meths.group_by {|m| m.source_lib }
+        groups.keys.sort {|a,b|
+          if a.nil?
+            -1
+          elsif b.nil?
+            1
+          else
+            [b[0],a[1],a[2]] <=> [a[0],b[1],b[2]]
+          end
+        }.map {|lib|
+          br + heading(
+            label + if lib.nil?
+                      ':'
+                    else
+                      lib[0] == :gem ? " From #{lib[1]}-#{lib[2].join('.')}:" : " From #{lib[1]}:"
+                    end
+          ) + indent {
+            columns groups[lib].sort {|a,b| a.name <=> b.name }.map {|m|
+              color(clr, m.name.to_s) + this.format_params(m)
+            }
+          }
+        }.join
+      }
+    end
+
     def constants_of klass, pat=//
       a = klass.constants.grep(pat).sort
-      format { heading("Constants:") { constant_color { columns a } } } unless a.empty?
+      format { br + heading("Constants:") { constant_color { columns a } } } unless a.empty?
     end
 
     def class_methods_of klass, pat=//
-      a = klass.unboring_methods.grep(pat).sort
+      a = klass.unboring_methods.grep(pat).map{|m| klass.method m }
       this = self
       format {
-        heading("Class Methods:") { columns a.map {|m| class_method_color{m} + this.format_params(klass.method(m)) } }
+        this.format_method_list("Class Methods", :class_method_color, a)
       } unless a.empty?
     end
 
     def instance_methods_of klass, pat=//
-      a = klass.unboring_instance_methods.grep(pat).sort
+      a = klass.unboring_instance_methods.grep(pat).map {|m| klass.instance_method m }
       this = self
       format {
-        heading("Instance Methods:") { columns a.map {|m| instance_method_color{m} + this.format_params(klass.instance_method(m)) } }
+        this.format_method_list("Instance Methods", :instance_method_color, a)
       } unless a.empty?
     end
 
     def singleton_methods_of obj, pat=//
-      a = obj.singleton_methods.grep(pat).sort
-      format { heading("Singleton Methods:") { singleton_method_color { columns a } } } unless a.empty?
+      a = obj.singleton_methods.grep(pat).map {|m| klass.singleton_method m }
+      format {
+        this.format_method_list("Singleton Methods", :singleton_method_color, a)
+      } unless a.empty?
     end
 
     def ancestors_of klass
@@ -508,9 +545,10 @@ module PrintMembers
             }
           }
         else
+          a = klass.direct_includes.to_a
           heading("Included Modules") {
-            klass.direct_includes.to_a.map {|mod| module_color(mod.to_s) + "\n" }.join
-          }
+            a.map {|mod| module_color(mod.to_s) + "\n" }.join
+          } unless a.empty?
         end
       }
     end
@@ -527,7 +565,7 @@ module PrintMembers
           class_title_color(" #{klass} ")
         else
           module_title_color(" #{klass} ")
-        end + "\n"
+        end + br
       } +
       ancestors_of(klass) +
       constants_of(klass, pat) +
@@ -540,6 +578,58 @@ module PrintMembers
       print members_of(obj, pat)
     end
 
+
+    def select_modules obj=Object, pat=//
+      [obj,*obj.nested_modules.select{|mod| mod != Object && mod != obj }.map{|mod| select_modules mod, pat }].flatten
+    end
+
+    def lsmod obj=Object, pat=//
+      obj = obj.class unless obj.is_a? Module
+
+      select_modules(obj,pat).select {|mod|
+        mod.base_name =~ pat
+      }.sort_by(&:name).each {|mod|
+        puts format {
+          if np = mod.nesting_path
+            np.map {|seg|
+              if seg.is_a? Class
+                class_color { seg.base_name }
+              else
+                module_color { seg.base_name }
+              end
+            }.join default_color { '::' }
+          end + default_color { "\n" }
+        } 
+      }
+      nil
+    end
+
+    def lslib obj=nil, pat=//
+      print format {
+        columns( if obj.nil?
+                   Librarian.libraries(:depth=>1).keys
+                 elsif obj.is_a? Module
+                   obj.source_libs
+                 else
+                   obj.class.source_libs
+                 end.select {|l| l =~ pat }.sort
+        )
+      }
+    end
+
+    def lsrb obj=nil, pat=//
+      print format {
+        columns( if obj.nil?
+                   Librarian.ruby_files
+                 elsif obj.is_a? Module
+                   obj.source_files
+                 else
+                   obj.class.source_files
+                 end.select {|l| l =~ pat }.sort
+        )
+      }
+    end
+
     def proto obj, meth
       mo = (obj.respond_to? meth and obj.method meth) or
            (obj.is_a? Module and obj.instance_method_defined? meth and obj.instance_method meth) or
@@ -547,8 +637,39 @@ module PrintMembers
     end
 
     def install
-      Object.class_eval { def pm pat=//; ::PrintMembers.pm self, pat; end }
-    end
+      Object.class_eval do
+        def pm pat=//
+          ::PrintMembers.pm self, pat
+        end
+
+        def lsmod pat=//
+          ::PrintMembers.lsmod Object, pat
+        end
+
+        def lslib pat=//
+          ::PrintMembers.lslib nil, pat
+        end
+
+        def lsrb pat=//
+          ::PrintMembers.lsrb nil, pat
+        end
+      end
+
+      Module.class_eval do
+        def lsmod pat=//
+          ::PrintMembers.lsmod self, pat
+        end
+
+        def lslib pat=//
+          ::PrintMembers.lslib self, pat
+        end
+
+        def lsrb pat=//
+          ::PrintMembers.lsrb self, pat
+        end
+      end
+    end # def install
+  
   end
 end
 
