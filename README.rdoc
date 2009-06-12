@@ -1,7 +1,7 @@
 Use reflection and source parsing to pretty print all kinds of info about a class or module.
 Only works in Ruby 1.9 for now.
 
-= Examples (that look better in color)
+== Examples (that look better in color)
 
  >> PrintMembers.pm String
   String
@@ -86,13 +86,33 @@ your .irbrc file:
   reduce/-1            replace/1            reverse_each/0       
 
 
-= Planned Features
+== Bonus features
 
-* Group items by gem
+ lsrb [pattern]
+ module.lsrb [pattern]
+
+Lists .rb files accessible from the load path, optionally filtering by
+regexp +pattern+. The second form lists only source files that define
+methods in +module+.
+
+ lslib [pattern]
+ module.lslib [pattern]
+
+Like +lsrb+ but identifies distinct libraries and gems (and gem versions)
+instead of listing all source files.
+
+ lsmod [pattern]
+ module.lsmod [pattern]
+
+Lists modules and classes. The second form lists only nested modules
+under +module+.
+
+
+== Planned Features
+
 * ActiveRecord integration
 * Instance variables
 * Extract RDoc markup
 * Use RI database
 * View method source
-* ObjectSpace browse/search
-* Gem browse/search
+* More extensive module/library browsing
