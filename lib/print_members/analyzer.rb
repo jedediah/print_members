@@ -39,7 +39,13 @@ module PrintMembers
         [s.intern, [lineno, column]]
       end
 
+      # an op can be a method name
       def on_op s
+        on_ident s
+      end
+
+      # and so can a backtick!!
+      def on_backtick s
         on_ident s
       end
     end

@@ -521,7 +521,8 @@ module PrintMembers
     end
 
     def singleton_methods_of obj, pat=//
-      a = obj.singleton_methods.grep(pat).map {|m| klass.singleton_method m }
+      a = obj.singleton_methods.grep(pat).map {|m| obj.method m }
+      this = self
       format {
         this.format_method_list("Singleton Methods", :singleton_method_color, a)
       } unless a.empty?
