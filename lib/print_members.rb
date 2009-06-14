@@ -511,7 +511,7 @@ module PrintMembers
 
     def constants_of klass, pat=//
       a = klass.constants.grep(pat).group_by {|c|
-        case const_get c
+        case klass.const_get c
         when Class
           :classes
         when Module
@@ -522,12 +522,12 @@ module PrintMembers
 
       (format {
         br + heading("Nested Modules and Classes:") {
-          columns((a[:modules].map {|m| module_color m } +
-                   a[:classes].map {|m| class_color m }).sort)
+          columns((a[:modules].to_a.map {|m| module_color m } +
+                   a[:classes].to_a.map {|m| class_color m }).sort)
         }
-      } unless a[:modules].empty? && a[:classes].empty?) +
+      } unless a[:modules].to_a.empty? && a[:classes].to_a.empty?) +
 
-      format { br + heading("Constants:") { constant_color { columns a[:constants] } } } unless a[:constants].empty?
+      format { br + heading("Constants:") { constant_color { columns a[:constants] } } } unless a[:constants].to_a.empty?
     end
 
     def class_methods_of klass, pat=//
