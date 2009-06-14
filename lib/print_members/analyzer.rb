@@ -144,6 +144,12 @@ module PrintMembers
       end
     end
 
+    # Uses dark magic to get the compiled RubyVM::InstructionSequence for the method
+    def iseq
+      ::ObjectSpace.each_object(::RubyVM::InstructionSequence).find {|iseq|
+        iseq.inspect =~ /^<RubyVM::InstructionSequence:#{self.name}@/ }
+    end
+
   end # module MethodTools
 end # module PrintMembers
 
