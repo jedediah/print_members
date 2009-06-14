@@ -204,6 +204,16 @@ module PrintMembers
       self
     end
 
+    include Comparable
+
+    def <=> x
+      if x.is_a? self.class
+        @string <=> x.string
+      else
+        @string <=> x.to_str
+      end
+    end
+
     def size
       @string.length
     end
@@ -500,8 +510,24 @@ module PrintMembers
     end
 
     def constants_of klass, pat=//
-      a = klass.constants.grep(pat).sort
-      format { br + heading("Constants:") { constant_color { columns a } } } unless a.empty?
+      a = klass.constants.grep(pat).group_by {|c|
+        case const_get c
+        when Class
+          :classes
+        when Module
+          :modules
+        else
+          :constants
+        end }
+
+      (format {
+        br + heading("Nested Modules and Classes:") {
+          columns((a[:modules].map {|m| module_color m } +
+                   a[:classes].map {|m| class_color m }).sort)
+        }
+      } unless a[:modules].empty? && a[:classes].empty?) +
+
+      format { br + heading("Constants:") { constant_color { columns a[:constants] } } } unless a[:constants].empty?
     end
 
     def class_methods_of klass, pat=//
