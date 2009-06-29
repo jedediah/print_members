@@ -562,8 +562,8 @@ module PrintMembers
     end
 
     def constants_of klass, pat=//
-      a = klass.constants.grep(pat).group_by {|c|
-        case klass.const_get c
+      a = klass.send_bypass_singleton(:constants).grep(pat).group_by {|c|
+        case klass.send_bypass_singleton :const_get, c
         when Class
           :classes
         when Module
@@ -689,10 +689,25 @@ module PrintMembers
       nil
     end
 
-    def lslib obj=nil, pat=//
+    def lslib *a
+      opts = {}
+      pat = //
+      obj = nil
+
+      a.each do |x|
+        case x
+        when Hash
+          opts = x
+        when Regexp
+          pat = x
+        else
+          obj = x
+        end
+      end
+
       print format {
         if obj.nil?
-          columns Librarian.libraries(:depth=>1).keys.select{|l| l =~ pat }.sort
+          columns Librarian.libraries(opts).keys.select{|l| l =~ pat }.sort
         else
           if obj.is_a? Module
             obj.source_libs

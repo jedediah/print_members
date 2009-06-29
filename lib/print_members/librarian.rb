@@ -46,32 +46,42 @@ module PrintMembers
       end
 
       def libraries opts={}
-        opts[:libs] ||= {}
+        base = opts[:base] || $LOAD_PATH
+        seen = opts[:seen] ||= {}
+        libs = opts[:libs] ||= {}
         #puts opts.inspect
-        path = opts[:path] || $LOAD_PATH
-        if path.is_a? Array
-          path.each {|lp| libraries(opts.merge :path => lp) }
+        if base.is_a? Array
+          base.each {|lp|
+            #puts "[base #{lp}]"
+            libraries(opts.merge :base => lp)
+          }
         else
-          sub = opts[:sub_path] || ''
-          full = File.join(path, sub)
-          if File.exist? full
+          sub = opts[:sub] || ''
+          full = File.join(base,sub)
+
+          if !seen[full] && File.exist?(full)
+            seen[full] = true
+
             if File.directory? full
-              #puts "[searching dir #{path}]"
-              if opts[:depth].nil? || opts[:depth] > 0
-                Dir.new(full).
-                  reject{|p| File.basename(p) =~ /^\.\.?$/ }.
-                  each {|p| libraries opts.merge :sub_path => File.join(sub,p),
-                                            :depth => (if opts[:depth]
-                                                       then opts[:depth]-1
-                                                       else nil end) }
+              unless opts[:depth] && opts[:depth] <= 0
+                #puts "[recurse sub=#{sub} full=#{full}]"
+                Dir.new(full).reject{|p|
+                  File.basename(p) =~ /^\.\.?$/
+                }.each {|p|
+                  libraries(opts.merge :sub => File.join(sub,p),
+                                       :depth => (opts[:depth] ? opts[:depth]-1 : nil))
+                }
               end
-            elsif full =~ /\.rb$/
-              opts[:libs][sub.gsub(/^[\.\/]*|\.rb$/,'')] = full
+            elsif sub =~ /\.(rb|so|dll)$/
+              #puts "[lib #{sub}]"
+              libs[sub.gsub(/^\/|\.(rb|so|dll)$/,'')] = full
             end
+
           end
         end
+
         return opts[:libs]
-      end # def libs
+      end # def libraries
 
     end # class << self
   end # module Librarian

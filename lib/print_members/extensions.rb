@@ -75,6 +75,12 @@ module PrintMembers
       # Make the 
       def copy_singleton_methods obj
       end
+
+      # Call the given instance method defined in the class of +self+
+      # bypassing any method defined in its singleton class
+      def send_bypass_singleton meth, *args, &block
+        self.class.instance_method(meth).bind(self).call *args, &block
+      end
     end
 
     module Kernel
