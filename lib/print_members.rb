@@ -369,8 +369,8 @@ module PrintMembers
     end
 
     def self.format &block
-      new.instance_exec &block
-      #FallbackContext.evaluate new, &block
+      #new.instance_exec &block
+      FallbackContext.evaluate new, &block
     end
 
     def initialize conf={}
