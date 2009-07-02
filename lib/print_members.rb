@@ -563,7 +563,7 @@ module PrintMembers
 
     def constants_of klass, pat=//
       a = klass.send_bypass_singleton(:constants).grep(pat).group_by {|c|
-        case klass.send_bypass_singleton :const_get, c
+        case klass.send_bypass_singleton :safe_const_get, c
         when Class
           :classes
         when Module
@@ -589,7 +589,7 @@ module PrintMembers
     end
 
     def class_methods_of klass, pat=//
-      a = klass.unboring_methods.grep(pat).map{|m| klass.method m }
+      a = klass.unboring_methods.grep(pat).map{|m| klass.safe_method m }.compact
       this = self
       format {
         this.format_method_list("Class Methods", :class_method_color, a)
@@ -597,7 +597,7 @@ module PrintMembers
     end
 
     def instance_methods_of klass, pat=//
-      a = klass.unboring_instance_methods.grep(pat).map {|m| klass.instance_method m }
+      a = klass.unboring_instance_methods.grep(pat).map {|m| klass.safe_instance_method m }.compact
       this = self
       format {
         this.format_method_list("Instance Methods", :instance_method_color, a)
@@ -605,7 +605,7 @@ module PrintMembers
     end
 
     def singleton_methods_of obj, pat=//
-      a = obj.singleton_methods.grep(pat).map {|m| obj.method m }
+      a = obj.singleton_methods.grep(pat).map {|m| obj.safe_method m }.compact
       this = self
       format {
         this.format_method_list("Singleton Methods", :singleton_method_color, a)

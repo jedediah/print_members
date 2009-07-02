@@ -152,6 +152,10 @@ class ::Class
 end
 
 class ::Module
+  def safe_const_get c
+    const_get c rescue nil
+  end
+
   def instances
     ::ObjectSpace.each_object(self).to_a
   end
@@ -347,6 +351,16 @@ class ::Module
   def instance_method_locations
     instance_methods.mash {|m| mm = instance_method(m); [m, [mm.owner, mm.source_gem]] }
   end
+
+  def safe_method m
+    method m rescue nil
+  end
+
+  def safe_instance_method m
+    instance_method m rescue nil
+  end
+
+  ### Ancestry ###
 
   def indirect_ancestors
     ancestors[1..-1].to_a.map{|x| x.ancestors[1..-1].to_a }.flatten
