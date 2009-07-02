@@ -342,12 +342,39 @@ module PrintMembers
   end
 
   class Formatter
-    def self.format &block
-      new.instance_eval &block
+    class FallbackContext < BasicObject
+      class << self
+        private :new
+        def evaluate primary, *args, &block
+          send(:new, primary, block.binding.eval('self')).instance_exec *args, &block
+        end
+
+        def const_missing c
+          ::Object.const_get c
+        end
+      end
+
+      def initialize primary, fallback
+        @primary = primary
+        @fallback = fallback
+      end
+
+      def method_missing meth, *args, &block
+        begin
+          @primary.send meth, *args, &block
+        rescue ::NameError
+          @fallback.send meth, *args, &block
+        end
+      end
     end
 
-    def initialize conf=nil
-      @conf = conf || CONF
+    def self.format &block
+      new.instance_exec &block
+      #FallbackContext.evaluate new, &block
+    end
+
+    def initialize conf={}
+      @conf = CONF.merge conf
       @width = if @conf[:terminal_width].is_a? Integer
                  @conf[:terminal_width]
                else
@@ -610,6 +637,11 @@ module PrintMembers
       format {
         this.format_method_list("Singleton Methods", :singleton_method_color, a)
       } unless a.empty?
+    end
+
+    def instance_variables_of obj, pat=//
+      a = Hash[*obj.instance_variables.grep(pat).map {|v| [v, obj.instance_variable_get(v)] }.flatten]
+      
     end
 
     def ancestors_of klass
