@@ -40,7 +40,9 @@ module PrintMembers
       end
 
       # It seems nearly any token can be a method name!
-      SCANNER_EVENTS.each {|m| alias_method "on_#{m}".intern, :on_token }
+      # We use send here because RDoc doesn't like direct calls
+      # to alias_method with anything but symbol literals
+      SCANNER_EVENTS.each {|m| send :alias_method, "on_#{m}".intern, :on_token }
     end
 
     METHODS = {}
