@@ -10,7 +10,7 @@ module PrintMembers
       end
       
       def on_def meth, params, body
-        # puts "#{lineno}, #{column}: on_def #{[meth,params,body].inspect}"
+        #puts "#{lineno}, #{column}: on_def #{[meth,params,body].inspect}"
         @block.call :line => meth[1][0],
                     :column => meth[1][1],
                     :ident => meth[0],
@@ -35,19 +35,12 @@ module PrintMembers
                  block && block[0].intern ]
       end
 
-      def on_ident s
+      def on_token s
         [s.intern, [lineno, column]]
       end
 
-      # an op can be a method name
-      def on_op s
-        on_ident s
-      end
-
-      # and so can a backtick!!
-      def on_backtick s
-        on_ident s
-      end
+      # It seems nearly any token can be a method name!
+      SCANNER_EVENTS.each {|m| alias_method "on_#{m}".intern, :on_token }
     end
 
     METHODS = {}

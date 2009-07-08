@@ -72,8 +72,8 @@ module PrintMembers
         self.singleton_class.class_eval &block
       end
 
-      # Make the 
-      def copy_singleton_methods obj
+      def safe_method m
+        method m rescue nil
       end
 
       # Call the given instance method defined in the class of +self+
@@ -350,10 +350,6 @@ class ::Module
 
   def instance_method_locations
     instance_methods.mash {|m| mm = instance_method(m); [m, [mm.owner, mm.source_gem]] }
-  end
-
-  def safe_method m
-    method m rescue nil
   end
 
   def safe_instance_method m

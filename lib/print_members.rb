@@ -362,8 +362,15 @@ module PrintMembers
       def method_missing meth, *args, &block
         begin
           @primary.send meth, *args, &block
-        rescue ::NameError
-          @fallback.send meth, *args, &block
+        rescue ::NoMethodError => ex
+          ::Kernel.raise unless ex.name.intern == meth
+          begin
+            @fallback.send ex.name, *args, &block
+          rescue ::NoMethodError => ex
+            ::Kernel.raise unless ex.name.intern == meth
+            ::Kernel.raise ex.exception "Method '#{meth}' was not found in either " \
+                                        "#{@primary.inspect[0..20]} or #{@fallback.inspect[0..20]}"
+          end
         end
       end
     end
@@ -617,18 +624,12 @@ module PrintMembers
 
     def class_methods_of klass, pat=//
       a = klass.unboring_methods.grep(pat).map{|m| klass.safe_method m }.compact
-      this = self
-      format {
-        this.format_method_list("Class Methods", :class_method_color, a)
-      } unless a.empty?
+      format_method_list("Class Methods", :class_method_color, a) unless a.empty?
     end
 
     def instance_methods_of klass, pat=//
       a = klass.unboring_instance_methods.grep(pat).map {|m| klass.safe_instance_method m }.compact
-      this = self
-      format {
-        this.format_method_list("Instance Methods", :instance_method_color, a)
-      } unless a.empty?
+      format_method_list("Instance Methods", :instance_method_color, a) unless a.empty?
     end
 
     def singleton_methods_of obj, pat=//
