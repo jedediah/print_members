@@ -18,7 +18,7 @@ module PrintMembers
       end
 
       def ruby_files *path
-        path = $LOAD_PATH if path.empty?
+        path = $LOAD_PATH-['.'] if path.empty?
 
         if path.size == 1
           path = path[0]
@@ -46,7 +46,7 @@ module PrintMembers
       end
 
       def libraries opts={}
-        base = opts[:base] || $LOAD_PATH
+        base = opts[:base] || ($LOAD_PATH-['.'])
         seen = opts[:seen] ||= {}
         libs = opts[:libs] ||= {}
         #puts opts.inspect
