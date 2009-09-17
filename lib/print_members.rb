@@ -1,9 +1,9 @@
 
 proc do |lib|
-  load lib['print_members/extensions.rb']
-  load lib['print_members/librarian.rb']
-  load lib['print_members/analyzer.rb']
-  load lib['print_members/active_record.rb'] if Object.const_defined? :ActiveRecord
+  require lib['print_members/extensions.rb']
+  require lib['print_members/librarian.rb']
+  require lib['print_members/analyzer.rb']
+  require lib['print_members/active_record.rb'] if Object.const_defined? :ActiveRecord
 end[ proc{|x| File.join(File.dirname(__FILE__),x) } ]
 
 
