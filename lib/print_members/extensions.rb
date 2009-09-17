@@ -120,6 +120,32 @@ module PrintMembers
           reduce {|acc, x| acc << sep << x }
         end
       end
+
+      def pad len, val=nil
+        if size < len
+          self + ::Array.new(len-size, val)
+        else
+          self
+        end
+      end
+
+      def pad! len, val=nil
+        if size < len
+          concat ::Array.new(len-size, val)
+        else
+          self
+        end
+      end
+
+      def map_with_index
+        if block_given?
+          nova = ::Array.new size
+          size.times {|i| nova[i] = yield self[i], i }
+          nova
+        else
+          enum_for :map_with_index
+        end
+      end
     end # module Array
 
   end # module Ext
@@ -127,7 +153,7 @@ end # module PrintMembers
 
 [String,Object,Kernel,BasicObject,Array].each do |mod|
   ext = PrintMembers::Ext.const_get(mod.name)
-  mod.instance_exec(ext) {|ext| include ext }
+  mod.send :include, ext
   mod.extend ext::ClassMethods if defined? ext::ClassMethods
 end
 
