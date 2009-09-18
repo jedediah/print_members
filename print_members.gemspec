@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "print_members"
-  s.version = "0.3"
+  s.version = "0.3.1"
   s.authors = ["Jedediah Smith"]
   s.date = "2009-06-10"
   s.description = "Pretty print a list of live methods and constants"
