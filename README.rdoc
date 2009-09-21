@@ -1,5 +1,18 @@
-Use reflection and source parsing to pretty print all kinds of info about a class or module.
-Only works in Ruby 1.9 for now.
+This is a handy introspection tool for use in IRB, or your REPL of choice. It pretty prints
+the following details about a class or module:
+
+ - class inheritance chain
+ - modules included in each class in the chain
+ - nested modules and classes
+ - nested constants
+ - class methods
+ - instance methods
+ - singleton methods (if you pass it a non-module)
+ - arity for each method *or*
+ - formal parameter names (if it can find the method source)
+ - methods grouped by lib/gem
+
+It only works in Ruby 1.9 for now.
 
 == Examples (that look better in color)
 
@@ -66,7 +79,7 @@ Passing a Regexp as the second argument will filter the methods:
 The +install+ method monkey patches +Object+ with a +pm+ method. Call it from
 your .irbrc file:
 
- >> PrintMethods.install
+ >> PrintMembers.install
 
  >> Array.pm /^re/
  Array 
