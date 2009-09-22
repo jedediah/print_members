@@ -387,9 +387,9 @@ module PrintMembers
       @width = if tw.respond_to? :to_int
                  tw
                elsif tw.respond_to? :to_str
-                 ENV[tw]
+                 ENV[tw].to_i
                else
-                 ENV['COLUMNS']
+                 ENV['COLUMNS'].to_i
                end
       begin
         require 'terminfo'
