@@ -323,7 +323,8 @@ module PrintMembers
   
   unless defined? CONF
     CONF = {
-      :terminal_width            => "COLUMNS",   # determine terminal width from environment (can also be a number or nil)
+      :terminal_width            => nil,         # terminal width in columns or the name of an environment variable
+                                                 # or nil to try to detect width using ENV['COLUMNS'] then terminfo gem
       :indent_size               => 2,
       :color                     => true,        # enable colors
       :class_title_color         => "41;37;1",   # title of a class page
@@ -382,11 +383,20 @@ module PrintMembers
 
     def initialize conf={}
       @conf = CONF.merge conf
-      @width = if @conf[:terminal_width].is_a? Integer
-                 @conf[:terminal_width]
+      tw = @conf[:terminal_width]
+      @width = if tw.respond_to? :to_int
+                 tw
+               elsif tw.respond_to? :to_str
+                 ENV[tw]
                else
-                 ENV[@conf[:terminal_width]].to_i rescue 78
+                 ENV['COLUMNS']
                end
+      begin
+        require 'terminfo'
+        @width = TermInfo.screen_width
+      rescue LoadError
+        @width = 78
+      end unless @width
     end
 
     def cousin conf={}
