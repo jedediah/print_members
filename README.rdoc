@@ -1,16 +1,16 @@
 This is a handy introspection tool for use in IRB, or your REPL of choice. It pretty prints
 the following details about a class or module:
 
- - class inheritance chain
- - modules included in each class in the chain
- - nested modules and classes
- - nested constants
- - class methods
- - instance methods
- - singleton methods (if you pass it a non-module)
- - arity for each method *or*
- - formal parameter names (if it can find the method source)
- - methods grouped by lib/gem
+* class inheritance chain
+* modules included in each class in the chain
+* nested modules and classes
+* nested constants
+* class methods
+* instance methods
+* singleton methods (if you pass it a non-module)
+* arity for each method *or*
+* formal parameter names (if it can find the method source)
+* methods grouped by lib/gem
 
 It only works in Ruby 1.9 for now.
 
