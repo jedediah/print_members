@@ -43,7 +43,6 @@ end # module Enumerable
 
 module PrintMembers
   module Ext
-
     module String
       # Return a string of length +n+, containing +self+ left-justified
       # and either padded with +pad+ or truncated, depending on its size relative to +n+.
@@ -65,6 +64,7 @@ module PrintMembers
       # Anonymous singleton class of this object
       def singleton_class
         class << self; self; end
+      rescue TypeError
       end
 
       # Eval block in the context of the singleton class
@@ -74,6 +74,11 @@ module PrintMembers
 
       def safe_method m
         method m rescue nil
+      end
+
+      def singleton_method_defined? m
+        (class << self; self; end).instance_method_defined? m
+      rescue TypeError
       end
 
       # Call the given instance method defined in the class of +self+
