@@ -14,6 +14,8 @@ Gem::Specification.new do |s|
              "lib/print_members/librarian.rb",
              "lib/print_members/active_record.rb",
              "lib/print_members/analyzer.rb",
+             "lib/print_members/ansi.rb",
+             "lib/print_members/method.rb",
              "Rakefile"]
   s.has_rdoc = true
   s.homepage = "http://github.com/jedediah/print_members"
