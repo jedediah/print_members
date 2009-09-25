@@ -342,6 +342,7 @@ module PrintMembers
 
     def instance_methods_of klass, pat=//
       a = klass.unboring_instance_methods.grep(pat).map {|m| klass.safe_instance_method m }.compact
+      a << klass.instance_method(:initialize) if klass.private_method_defined? :initialize
       format_method_list("Instance Methods", :instance_method_color, a) unless a.empty?
     end
 
