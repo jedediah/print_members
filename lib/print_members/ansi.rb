@@ -146,7 +146,7 @@ module PrintMembers
   class ColorString
     def initialize str='', col=nil
       if col.nil?
-        if str.respond_to? :to_color_string
+        if !str.is_a?(ColorString) && str.respond_to?(:to_color_string)
           str = str.to_color_string
         else
           str = str.to_str.to_color_string

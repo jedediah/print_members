@@ -83,23 +83,41 @@ module PrintMembers
       TOKEN_COLORS[token] = SOURCE_COLORS[group] unless TOKEN_COLORS.key? token
     end if defined? SOURCE_COLORS
 
-    def self.parse_method meth, opts={}
+    def self.get_method meth, opts={}
       if (sl = meth.source_location) && File.exist?(sl[0])
         File.open sl[0] do |io|
-          parse_method_at io, sl[1]
-        end
-      end
+          pos = 0
+          comment = false
+          (sl[1]-1).times do
+            case l = io.readline
+            when /^\s*#/
+              comment = true
+            when /^\s*$/
+              pos = io.pos unless comment
+            else
+              pos = io.pos
+              comment = false
+            end # case
+          end # (ln-1).times
+          io.seek pos, IO::SEEK_SET
+          parse_method io, opts
+        end # File.open
+      end # if
+    end # get_method
+
+    def self.get_method_at io, line, opts={}
+      io.goto_line line-1
+      parse_method io, opts
     end
 
-    def self.parse_method_at io, line, opts={}
-      io.goto_line line-1
-      md = new io, nil, line, opts
+    def self.parse_method io, opts
+      md = new io, nil, io.lineno, opts
       catch :def do
         md.parse
         return nil
       end
     end
-
+    
     DEFAULT_OPTIONS = {:color => true}
 
     def initialize src, file, line, opts={}
@@ -108,11 +126,22 @@ module PrintMembers
       @source = []
       @tstring_host = []
       @last_token = nil
+      @method_nesting = 0
       #self.yydebug = true
     end
 
     def finish
-      throw :def, @source.sort{|a,b| a[0] <=> b[0] }.map{|x| x[1]}.join
+      @source.sort! {|a,b| a[0] <=> b[0] }
+      src = @source.reduce([]) do |a,x|
+        if a.last && x[0][0] == a.last[0][0]
+          a.last[1] << x[1]
+        else
+          a << x
+        end
+        a
+      end
+      ind = src.map{|x| x[1][/^\s*/].size }.min .. -1
+      throw :def, src.map{|x| x[1].slice ind }.join
     end
     
     def on_def id,params,body

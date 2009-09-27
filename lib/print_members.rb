@@ -8,26 +8,28 @@ module PrintMembers
   # Below are the default values. You should copy this to your
   # file and mess with it there. Be sure to put it in the
   # PrintMembers namespace.
-  unless defined? CONF
+  #unless defined? CONF
     CONF = {
-      :terminal_width            => nil,         # terminal width in columns or the name of an environment variable
-                                                 # or nil to try to detect width using ENV['COLUMNS'] then terminfo gem
+      :terminal_width            => nil,                       # terminal width in columns or the name of an environment variable
+                                                               # or nil to try to detect width using ENV['COLUMNS'] then terminfo gem
       :indent_size               => 2,
-      :color                     => true,        # enable colors
-      :class_title_color         => "41;37;1",   # title of a class page
-      :module_title_color        => "44;37;1",   # title of a module page
-      :heading_color             => "37;1",      # section names
-      :class_color               => "31;1",      # classes in ancestry
-      :module_color              => "34;1",      # modules in ancestry
-      :constant_color            => "31;1",      # member constants
-      :class_method_color        => "36;1",      # class methods
-      :instance_method_color     => "32;1",      # instance methods
-      :singleton_method_color    => "33;1",      # methods of defined only on the singleton class
-      :method_param_color        => "37",
-      :slash_color               => "34;1",      # misc punctuation
-      :arity_color               => "37"         # method arity (number of arguments)
+      :color                     => true,                      # enable colors
+      :class_title_color         => "41;37;1",                 # title of a class page
+      :module_title_color        => "44;37;1",                 # title of a module page
+      :heading_color             => "37;1",                    # section names
+      :class_color               => "31;1",                    # classes in ancestry
+      :module_color              => "34;1",                    # modules in ancestry
+      :constant_color            => "31;1",                    # member constants
+      :class_method_color        => "36;1",                    # class methods
+      :instance_method_color     => "32;1",                    # instance methods
+      :singleton_method_color    => "33;1",                    # methods of defined only on the singleton class
+      :method_param_color        => "37",                     
+      :slash_color               => "34;1",                    # misc punctuation
+      :arity_color               => "37",                      # method arity (number of arguments)
+      :file_name_color           => "1;33",
+      :line_number_color         => "1;36",
     }
-  end
+  #end
 
   SOURCE_COLORS = {
     :keyword         => Ansi.bright_blue,
@@ -356,7 +358,7 @@ module PrintMembers
 
     def instance_variables_of obj, pat=//
       a = Hash[*obj.instance_variables.grep(pat).map {|v| [v, obj.instance_variable_get(v)] }.flatten]
-      
+      # TODO
     end
 
     def ancestors_of klass
@@ -418,16 +420,25 @@ module PrintMembers
     def ps obj, meth, opts={}
       m = if meth.is_a?(Method) || meth.is_a?(UnboundMethod)
             meth
-          elsif obj.singleton_method_defined? meth
+          elsif obj.singleton_method_defined?(meth) ||
+                obj.singleton_class.private_method_defined?(meth)
             obj.method meth
-          elsif obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth)
+          elsif (obj.respond_to?(:private_method_defined?) && obj.private_method_defined?(meth)) ||
+                (obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth))
             obj.instance_method meth
           else
             raise NoMethodError.new "Can't find a method called `#{meth}' for object #{obj.inspect}"
           end
 
-      puts MethodPrinter.parse_method(m, opts) || "Sorry, I can't find the source for `#{meth}'. If this bothers you, please\n" \
-                                                  "encourage the Ruby core team to implement source_location more thoroughly.\n"
+      if sl = m.source_location
+        print format {
+          "#{line_number_color(sl[1].to_s)} #{file_name_color(sl[0])}\n\n" +
+          indent { MethodPrinter.get_method m, opts } + "\n\n"
+        }
+      else
+        puts  "Sorry, I can't find the source for `#{meth}'. If this bothers you, please\n" \
+              "encourage the Ruby core team to implement source_location more thoroughly.\n"
+      end
     end
     
     def lsmod obj=Object, pat=//
