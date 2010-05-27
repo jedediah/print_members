@@ -412,27 +412,31 @@ module PrintMembers
     def select_modules obj=Object, pat=//
       [obj,*obj.nested_modules.select{|mod| mod != Object && mod != obj }.map{|mod| select_modules mod, pat }].flatten
     end
-
-    def pm obj, pat=//
+    
+    def print_members obj, pat=//
       print members_of(obj, pat)
     end
 
-    def ps obj, meth, opts={}
-      m = if meth.is_a?(Method) || meth.is_a?(UnboundMethod)
-            meth
-          elsif obj.singleton_method_defined?(meth) ||
-                obj.singleton_class.private_method_defined?(meth)
-            obj.method meth
-          elsif (obj.respond_to?(:private_method_defined?) && obj.private_method_defined?(meth)) ||
-                (obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth))
-            obj.instance_method meth
-          else
-            raise NoMethodError.new "Can't find a method called `#{meth}' for object #{obj.inspect}"
-          end
+    def resolve_method obj, meth
+      if meth.is_a?(Method) || meth.is_a?(UnboundMethod)
+        meth
+      elsif (obj.respond_to?(:private_method_defined?) && obj.private_method_defined?(meth)) ||
+            (obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth))
+        obj.instance_method meth
+      elsif obj.singleton_method_defined?(meth) ||
+            obj.singleton_class.private_method_defined?(meth)
+        obj.method meth
+      else
+        raise NoMethodError.new "Can't find a method called `#{meth}' for object #{obj.inspect}"
+      end
+    end
 
-      if sl = m.source_location
+    def print_source obj, meth, opts={}
+      m = resolve_method obj, meth
+      file,line = m.source_location
+      if file
         print format {
-          "#{line_number_color(sl[1].to_s)} #{file_name_color(sl[0])}\n\n" +
+          "#{line_number_color line.to_s} #{file_name_color file}\n\n" +
           indent { MethodPrinter.get_method m, opts } + "\n\n"
         }
       else
@@ -441,7 +445,7 @@ module PrintMembers
       end
     end
     
-    def lsmod obj=Object, pat=//
+    def list_modules obj=Object, pat=//
       obj = obj.class unless obj.is_a? Module
 
       select_modules(obj,pat).select {|mod|
@@ -462,7 +466,7 @@ module PrintMembers
       nil
     end
 
-    def lslib *a
+    def list_libraries *a
       opts = {}
       pat = //
       obj = nil
@@ -497,11 +501,11 @@ module PrintMembers
       }
     end
 
-    def lsrb obj=nil, pat=//
+    def list_sources obj=nil, pat=//
       print format {
         columns( if obj.nil?
                    Librarian.ruby_files
-                 elsif obj.is_a? Module
+                 elsif obj.respond_to? :source_files
                    obj.source_files
                  else
                    obj.class.source_files
@@ -518,43 +522,43 @@ module PrintMembers
 
     module ModuleCommands
       def lsmod pat=//
-        PrintMembers.lsmod self, pat
+        PrintMembers.list_modules self, pat
       end
 
       def lslib pat=//
-        PrintMembers.lslib self, pat
+        PrintMembers.list_libraries self, pat
       end
 
       def lsrb pat=//
-        PrintMembers.lsrb self, pat
+        PrintMembers.list_sources self, pat
       end
     end
       
     module ObjectCommands
       def pm pat=//
-        PrintMembers.pm self, pat
+        PrintMembers.print_members self, pat
       end
 
       def ps meth, opts={}
-        PrintMembers.ps self, meth, opts
+        PrintMembers.print_source self, meth, opts
       end
 
       def lsmod pat=//
-        PrintMembers.lsmod Object, pat
+        PrintMembers.list_modules Object, pat
       end
 
       def lslib pat=//
-        PrintMembers.lslib nil, pat
+        PrintMembers.list_libraries nil, pat
       end
 
       def lsrb pat=//
-        PrintMembers.lsrb nil, pat
+        PrintMembers.list_sources nil, pat
       end
     end
 
     module MethodCommands
       def ps opts={}
-        PrintMembers.ps self, opts
+        PrintMembers.print_source self, opts
       end
     end
       
