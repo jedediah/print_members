@@ -19,7 +19,23 @@ module PrintMembers
 
   class MethodPrinter < Ripper
     # Set colors in print_members.rb
-    TOKEN_COLORS = Hash.new Ansi.bright_white
+
+    TOKEN_COLORS = {
+      :keyword         => Ansi.bright_blue,
+      :variable        => Ansi.bright_green,     # instance, class and global
+      :constant        => Ansi.bright_red,
+      :identifier      => Ansi.bright_white,
+      :string          => Ansi.bright_yellow,    # includes string and regexp
+      :interpolated    => Ansi.green,
+      :number          => Ansi.bright_cyan,      # includes int and float
+      :symbol          => Ansi.yellow,
+      :punctuation     => Ansi.white,            # delimiters and separators
+      :operator        => Ansi.white,
+      :comment         => Ansi.bright_black,
+      :regexp          => Ansi.bright_yellow
+    }
+
+    TOKEN_COLORS.default = Ansi.white
 
     TOKEN_GROUP_MAP = {
       :CHAR            => :string,
@@ -80,8 +96,8 @@ module PrintMembers
     }
 
     TOKEN_GROUP_MAP.each do |token,group|
-      TOKEN_COLORS[token] = SOURCE_COLORS[group] unless TOKEN_COLORS.key? token
-    end if defined? SOURCE_COLORS
+      TOKEN_COLORS[token] = TOKEN_COLORS[group] unless TOKEN_COLORS.key? token
+    end
 
     def self.get_method meth, opts={}
       if (sl = meth.source_location) && File.exist?(sl[0])

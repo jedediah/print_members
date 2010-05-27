@@ -31,21 +31,6 @@ module PrintMembers
     }
   #end
 
-  SOURCE_COLORS = {
-    :keyword         => Ansi.bright_blue,
-    :variable        => Ansi.bright_green,     # instance, class and global
-    :constant        => Ansi.red,
-    :identifier      => Ansi.bright_white,
-    :string          => Ansi.bright_yellow,    # includes string and regexp
-    :interpolated    => Ansi.bright_magenta,
-    :number          => Ansi.bright_cyan,      # includes int and float
-    :symbol          => Ansi.yellow,
-    :punctuation     => Ansi.bright_black,           # delimiters and separators
-    :operator        => Ansi.blue,
-    :comment         => Ansi.cyan,
-    :regexp          => Ansi.bright_yellow
-  }
-
   
   class Formatter
     class FallbackContext < BasicObject
@@ -418,17 +403,20 @@ module PrintMembers
     end
 
     def resolve_method obj, meth
-      if meth.is_a?(Method) || meth.is_a?(UnboundMethod)
-        meth
-      elsif (obj.respond_to?(:private_method_defined?) && obj.private_method_defined?(meth)) ||
-            (obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth))
-        obj.instance_method meth
-      elsif obj.singleton_method_defined?(meth) ||
-            obj.singleton_class.private_method_defined?(meth)
-        obj.method meth
-      else
-        raise NoMethodError.new "Can't find a method called `#{meth}' for object #{obj.inspect}"
+      if obj.respond_to?(:call)
+        return obj
+      elsif meth.respond_to? :call
+        return meth
+      elsif meth
+        if (obj.respond_to?(:private_method_defined?) && obj.private_method_defined?(meth)) ||
+           (obj.respond_to?(:instance_method_defined?) && obj.instance_method_defined?(meth))
+          return obj.instance_method meth
+        elsif obj.singleton_method_defined?(meth) ||
+              obj.singleton_class.private_method_defined?(meth)
+          return obj.method meth
+        end
       end
+      raise NoMethodError.new "Can't find a method called `#{meth}' for object #{obj.inspect}"
     end
 
     def print_source obj, meth, opts={}
