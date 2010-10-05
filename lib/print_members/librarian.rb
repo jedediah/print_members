@@ -2,13 +2,15 @@
 module PrintMembers
   module Librarian
     SEPARATOR_RE = Regexp.escape(::File::SEPARATOR)
-    GEM_PATH_TO_NAME = ::Gem::QuickLoader::GemPaths.invert
     LIBRARY_FOR_PATH = {}
 
     class << self
       def library_for_path src
         LIBRARY_FOR_PATH[src] ||=
-          if (defined? Gem) && (jem = Gem::QuickLoader::GemPaths.find {|x,path| src.start_with? path })
+          if (defined? Gem) &&
+             (defined? Gem::QuickLoader) &&
+             (defined? Gem::QuickLoader::GemPaths) &&
+             (jem = Gem::QuickLoader::GemPaths.find {|x,path| src.start_with? path })
             [:gem,jem[0],Gem::QuickLoader::GemVersions[jem[0]]]
           elsif !(path = $LOAD_PATH.select {|p| src.start_with? p }).empty?
             base = path.max_by(&:size).split SEPARATOR_RE
