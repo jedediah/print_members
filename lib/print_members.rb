@@ -430,7 +430,13 @@ module PrintMembers
 
 
     def select_modules obj=Object, pat=//
-      [obj,*obj.nested_modules.select{|mod| mod != Object && mod != obj }.map{|mod| select_modules mod, pat }].flatten
+      [ obj,
+        *obj.nested_modules.select { |mod|
+          mod != Object && mod != obj
+        }.map { |mod|
+          select_modules mod, pat
+        }
+      ].flatten
     end
     
     def print_members obj, pat=//

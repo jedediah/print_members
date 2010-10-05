@@ -82,17 +82,20 @@ module PrintMembers
 
       def parse_rendition_name rend
         ['0',*rend.to_s.scan(/(?:on_(?:bright_)?)?[^_]+/).map do |x|
-            if x =~ /^rgb(\d)(\d)(\d)$/
-              "38;5;" + (16 + $1.to_i*36 + $2.to_i*6 + $3.to_i).to_s
-            elsif x =~ /^grey(\d\d?)/
-              "38;5;" + (232 + $1.to_i).to_s
-            elsif x =~ /^on_rgb(\d)(\d)(\d)$/
-              "48;5;" + (16 + $1.to_i*36 + $2.to_i*6 + $3.to_i).to_s
-            elsif x =~ /^on_grey(\d\d?)/
-              "48;5;" + (232 + $1.to_i).to_s
-            else
-              RENDITION[x.intern]
-            end.to_s
+            s = if x =~ /^rgb(\d)(\d)(\d)$/
+                  "38;5;" + (16 + $1.to_i*36 + $2.to_i*6 + $3.to_i).to_s
+                elsif x =~ /^grey(\d\d?)/
+                  "38;5;" + (232 + $1.to_i).to_s
+                elsif x =~ /^on_rgb(\d)(\d)(\d)$/
+                  "48;5;" + (16 + $1.to_i*36 + $2.to_i*6 + $3.to_i).to_s
+                elsif x =~ /^on_grey(\d\d?)/
+                  "48;5;" + (232 + $1.to_i).to_s
+                elsif RENDITION.include? x.intern
+                  RENDITION[x.intern]
+                end
+
+            return unless s
+            s.to_s
           end].join(';')
       end
 
