@@ -162,6 +162,7 @@ end # module PrintMembers
   mod.extend ext::ClassMethods if defined? ext::ClassMethods
 end
 
+
 class ::Class
   # True only if method +m+ is defined in this class (local) and is also in the superclass
   def method_overridden? m
@@ -180,15 +181,36 @@ class ::Class
       [self]
     end
   end
-end
+
+  # Enumerate all classes
+  def self.all &b
+    ::ObjectSpace.each_object ::Class, &b
+  end
+
+  def including_modules
+    enum_for :including_modules unless block_given?
+  end
+
+  # Enumerate all classes that directly or indirectly
+  # inherit from this class
+  def subclasses
+    if block_given?
+      ::Class.all do |c|
+        yield c if c < self
+      end
+    else
+      enum_for :subclasses
+    end
+  end
+end # ::Class
 
 class ::Module
   def safe_const_get c
     const_get c rescue nil
   end
 
-  def instances
-    ::ObjectSpace.each_object(self).to_a
+  def instances &b
+    ::ObjectSpace.each_object self, &b
   end
 
   def nested_modules
@@ -409,5 +431,28 @@ class ::Module
   def family_tree_hash
     direct_ancestors.reduce({}) {|h,mod| h[mod] = mod.family_tree_hash; h }
   end
-end
+
+  # Enumerate all modules that are not also classes
+  def self.all
+    if block_given?
+      ::ObjectSpace.each_object ::Module do |m|
+        yield m unless m.is_a? ::Class
+      end
+    else
+      enum_for :all
+    end
+  end
+
+  # Enumerate all modules or classes that include this module
+  def including_modules
+    if block_given?
+      ::Module.instances do |m|
+        yield m if m.include? self
+      end
+    else
+      enum_for :including_modules
+    end
+  end
+
+end # ::Module
 

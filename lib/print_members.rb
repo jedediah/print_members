@@ -118,7 +118,7 @@ module PrintMembers
     end
 
     def method_missing meth, *args, &block
-      super unless clr = ColorString::Ansi.parse_rendition_name(meth)
+      super unless clr = Ansi.parse_rendition_name(meth)
       color clr, args[0], &block
     end
 
@@ -160,6 +160,7 @@ module PrintMembers
     end
 
     def columns list
+      list = list.to_a
       return '' if list.empty?
 
       list = list.map {|x| if x.respond_to? :to_str then x else x.to_s end }
@@ -295,6 +296,18 @@ module PrintMembers
       }
     end
 
+    def format_module_list mods
+      format do
+        columns mods.map {|m|
+          if m.is_a? Class
+            class_color m.to_s
+          else
+            module_color m.to_s
+          end
+        }
+      end
+    end
+
     def constants_of klass, pat=//
       a = klass.send_bypass_singleton(:constants).grep(pat).group_by {|c|
         case klass.send_bypass_singleton :safe_const_get, c
@@ -372,6 +385,27 @@ module PrintMembers
       }
     end
 
+    def descendants_of klass
+      unless Object <= klass
+        if klass.is_a? Class
+          a = klass.subclasses
+          h = "Subclasses"
+        else
+          a = klass.including_modules
+          h = "Included By"
+        end
+
+        a = a.to_a
+        this = self
+        
+        format do
+          br + heading(h) {
+            this.format_module_list a
+          }
+        end unless a.empty?
+      end
+    end
+    
     def members_of obj, pat=//
       klass,inst = if obj.is_a? Module
                      [obj, nil]
@@ -387,6 +421,7 @@ module PrintMembers
         end + br
       } +
       ancestors_of(klass) +
+      descendants_of(klass) +
       constants_of(klass, pat) +
       class_methods_of(klass, pat) +
       instance_methods_of(klass, pat) +
