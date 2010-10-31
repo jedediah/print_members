@@ -1,5 +1,5 @@
 %w{extensions ansi librarian analyzer method}.each do |lib|
-  require File.join(File.dirname(__FILE__),'print_members',lib)
+  require File.join(File.dirname(__FILE__),'print_members',lib) + '.rb'
 end
 
 module PrintMembers
@@ -14,6 +14,7 @@ module PrintMembers
                                                                # or nil to try to detect width using ENV['COLUMNS'] then terminfo gem
       :indent_size               => 2,
       :color                     => true,                      # enable colors
+    
       :class_title_color         => "41;37;1",                 # title of a class page
       :module_title_color        => "44;37;1",                 # title of a module page
       :heading_color             => "37;1",                    # section names
@@ -28,6 +29,7 @@ module PrintMembers
       :arity_color               => "37",                      # method arity (number of arguments)
       :file_name_color           => "1;33",
       :line_number_color         => "1;36",
+      :error_color               => "31"
     }
   #end
 
@@ -256,8 +258,14 @@ module PrintMembers
       Formatter.format &block
     end
 
+    def format_safe &block
+      format &block
+    rescue => ex
+      format { error_color { "[#{ex.class} during introspection: #{ex.message}]" } }
+    end
+
     def format_params meth
-      format {
+      format_safe {
         if (par = meth.pretty_params) && par.size < 12
           slash_color{'('} +
           method_param_color{par} +
@@ -270,7 +278,7 @@ module PrintMembers
 
     def format_method_list label, clr, meths
       this = self
-      format {
+      format_safe {
         groups = meths.group_by {|m| m.source_lib }
         groups.keys.sort {|a,b|
           if a.nil?
@@ -297,7 +305,7 @@ module PrintMembers
     end
 
     def format_module_list mods
-      format do
+      format_safe {
         columns mods.map {|m|
           if m.is_a? Class
             class_color m.to_s
@@ -305,7 +313,7 @@ module PrintMembers
             module_color m.to_s
           end
         }
-      end
+      }
     end
 
     def constants_of klass, pat=//
@@ -319,16 +327,16 @@ module PrintMembers
           :constants
         end }
 
-      s = format { nul }
+      s = format_safe { nul }
 
-      s << format {
+      s << format_safe {
         br + heading("Nested Modules and Classes:") {
           columns((a[:modules].to_a.map {|m| module_color m.to_s } +
                    a[:classes].to_a.map {|m| class_color m.to_s }).sort)
         }
       } unless a[:modules].to_a.empty? && a[:classes].to_a.empty?
 
-      s << format {
+      s << format_safe {
         br + heading("Constants:") { constant_color { columns a[:constants] } }
       } unless a[:constants].to_a.empty?
 
@@ -349,7 +357,7 @@ module PrintMembers
     def singleton_methods_of obj, pat=//
       a = obj.singleton_methods.grep(pat).map {|m| obj.safe_method m }.compact
       this = self
-      format {
+      format_safe {
         this.format_method_list("Singleton Methods", :singleton_method_color, a)
       } unless a.empty?
     end
@@ -360,7 +368,7 @@ module PrintMembers
     end
 
     def ancestors_of klass
-      format {
+      format_safe {
         if klass.is_a? Class
           "\n" + indent {
             table {
@@ -398,7 +406,7 @@ module PrintMembers
         a = a.to_a
         this = self
         
-        format do
+        format_safe do
           br + heading(h) {
             this.format_module_list a
           }
@@ -413,7 +421,7 @@ module PrintMembers
                      [obj.class, obj]
                    end
 
-      format {
+      format_safe {
         if klass.is_a? Class
           class_title_color(" #{klass} ")
         else
