@@ -1,0 +1,17 @@
+PATH
+  remote: .
+  specs:
+    print_members (0.3.4)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rake (10.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler (~> 1.7)
+  print_members!
+  rake (~> 10.0)
