@@ -9,30 +9,36 @@ module PrintMembers
         @block = block
       end
       
-      def on_def meth, params, body
-        #puts "#{lineno}, #{column}: on_def #{[meth,params,body].inspect}"
-        @block.call :line => meth[1][0],
-                    :column => meth[1][1],
-                    :ident => meth[0],
-                    :leading => params[0],
-                    :optional => params[1],
-                    :splat => params[2],
-                    :trailing => params[3],
-                    :block => params[4],
-                    :params => (params[0]+params[1].map{|x| x[0]}+[params[2]]+params[3]+[params[4]]).compact
+      def on_def(meth, params, body)
+        ident, location = meth
+        line, column = location
+        leading, optional, splat, trailing, keywords, kwsplat, block = params
+        kwreq = keywords.to_a.select{|x| !x[1] }
+        kwopt = keywords.to_a.select{|x|  x[1] }
+
+        h = {
+          :line => line,
+          :column => column,
+          :ident => ident,
+          :leading => leading.to_a.compact.map{|x| x[0].intern },
+          :optional => optional.to_a.compact.map{|x| x[0][0].intern },
+          :splat => splat && splat[0].intern,
+          :trailing => trailing.to_a.compact.map{|x| x[0].intern },
+          :kwreq => kwreq.map{|x| x[0][0].intern },
+          :kwopt => kwopt.map{|x| x[0][0].intern },
+          :kwsplat => kwsplat && kwsplat[0].intern,
+          :block => block && block[0].intern,
+        }
+
+        @block.call(**h)
       end
 
       def on_defs context, delim, meth, params, body
-        # puts "#{lineno}, #{column}: on_defs #{a.inspect}"
         on_def meth, params, body
       end
 
-      def on_params leading, optional, splat, trailing, block
-        return [ leading.to_a.compact.map {|x| x[0].intern },
-                 optional.to_a.compact.map {|x| [x[0][0].intern, x[1]] },
-                 splat && splat[0].intern,
-                 trailing.to_a.compact.map {|x| x[0].intern },
-                 block && block[0].intern ]
+      def on_params(*args)
+        args
       end
 
       def on_token s
@@ -106,11 +112,14 @@ module PrintMembers
       if defn = definition
         a = []
         a += defn[:leading].map{|x| x.to_s }
-        a += defn[:optional].map{|x| "#{x[0]}=?" }
+        a += defn[:optional].map{|x| "#{x}=?" }
         a << "*#{defn[:splat]}" if defn[:splat]
         a += defn[:trailing].map{|x| x.to_s }
+        a += defn[:kwreq].map{|x| x.to_s }
+        a += defn[:kwopt].map{|x| "#{x}?" }
+        a << "**#{defn[:kwsplat]}" if defn[:kwsplat]
         a << "&#{defn[:block]}" if defn[:block]
-        return a.join(',')
+        a.join(',')
       end
     end
 

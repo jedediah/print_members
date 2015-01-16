@@ -254,19 +254,20 @@ module PrintMembers
 
   class << self
 
-    def format &block
+    def format_unsafe &block
       Formatter.format &block
     end
 
     def format_safe &block
-      format &block
+      format_unsafe &block
     rescue => ex
-      format { error_color { "[#{ex.class} during introspection: #{ex.message}]" } }
+      format_unsafe { error_color { "[#{ex.class} during introspection: #{ex.message}]" } }
+      raise
     end
 
     def format_params meth
       format_safe {
-        if (par = meth.pretty_params) && par.size < 12
+        if (par = meth.pretty_params) # && par.size < 12
           slash_color{'('} +
           method_param_color{par} +
           slash_color{')'}
@@ -472,7 +473,7 @@ module PrintMembers
       m = resolve_method obj, meth
       file,line = m.source_location
       if file
-        print format {
+        print format_unsafe {
           "#{line_number_color line.to_s} #{file_name_color file}\n\n" +
           indent { MethodPrinter.get_method m, opts } + "\n\n"
         }
@@ -488,7 +489,7 @@ module PrintMembers
       select_modules(obj,pat).select {|mod|
         mod.base_name =~ pat
       }.sort_by(&:name).each {|mod|
-        puts format {
+        puts format_unsafe {
           if np = mod.nesting_path
             np.map {|seg|
               if seg.is_a? Class
@@ -519,7 +520,7 @@ module PrintMembers
         end
       end
 
-      print format {
+      print format_unsafe {
         if obj.nil?
           columns Librarian.libraries(opts).keys.select{|l| l =~ pat }.sort
         else
@@ -539,7 +540,7 @@ module PrintMembers
     end
 
     def list_sources obj=nil, pat=//
-      print format {
+      print format_unsafe {
         columns( if obj.nil?
                    Librarian.ruby_files
                  elsif obj.respond_to? :source_files
