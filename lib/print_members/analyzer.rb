@@ -56,9 +56,9 @@ module PrintMembers
     class << self
       def analyze fn
         fn = File.expand_path(fn)
+        METHODS[fn] = {}
         File.open fn do |io|
           Parser.new io do |meth|
-            METHODS[fn] ||= {}
             METHODS[fn][[meth[:line],meth[:ident]]] = meth
           end.parse
         end
