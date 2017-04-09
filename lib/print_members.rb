@@ -88,7 +88,7 @@ module PrintMembers
         @width = TermInfo.screen_width
       rescue LoadError
         @width = 78
-      end unless @width
+      end unless @width.to_i > 0
     end
 
     def cousin conf={}
