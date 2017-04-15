@@ -168,7 +168,7 @@ module PrintMembers
       list = list.map {|x| if x.respond_to? :to_str then x else x.to_s end }
       col_width = list.map(&:size).max
       col_width = @width if col_width > @width
-      ncols = (@width+1) / (col_width+1)
+      ncols = ((@width+1) / (col_width+1)).floor
       nrows = (list.size.to_f/ncols).ceil
 
       nrows.times.map do |y|
