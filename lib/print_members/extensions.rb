@@ -447,7 +447,7 @@ class ::Module
   def including_modules
     if block_given?
       ::Module.instances do |m|
-        yield m if m.include? self
+        yield m if m.included_modules.include? self
       end
     else
       enum_for :including_modules
